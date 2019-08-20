@@ -1,7 +1,7 @@
 import os
 from setuptools import find_packages, setup
 
-with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
 # allow setup.py to be run from any path
@@ -9,14 +9,15 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-eveonline-connector',
-    version='1.0',
+    version='1.0.2',
     packages=find_packages(),
     include_package_data=True,
     license='MIT License',
-    description='A simple Django application that addsEVE Online entities and SSO urls',
+    description='A simple Django application that adds EVE Online entities and SSO methods',
     long_description=README,
-    url='https://kryptedgaming.com/',
-    author='Porowns',
+    long_description_content_type='text/markdown',
+    url='https://github.com/KryptedGaming/django-eveonline-connector',
+    author='porowns',
     author_email='porowns@gmail.com',
     classifiers=[
         'Environment :: Web Environment',
@@ -31,6 +32,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
     install_requires=[
-        'esipy'
+        'esipy',
+        'celery'
     ]
 )
