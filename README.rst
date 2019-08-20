@@ -1,6 +1,6 @@
-=====
+============================
 Django EVE Online Connector
-=====
+============================
 
 Django EVE Online Connector is a simple Django application that adds
 EVE Online entities and SSO urls to your application. 
