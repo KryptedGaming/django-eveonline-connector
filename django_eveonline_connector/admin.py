@@ -3,3 +3,5 @@ from django_eveonline_connector.models import EveClient, EveScope, EveCharacter,
 
 admin.site.register(EveClient)
 admin.site.register(EveScope)
+admin.site.register(EveCharacter)
+admin.site.register(EveToken)

@@ -25,6 +25,8 @@ def sso_callback(request):
     token.expires_in = esi_token['expires_in']
     token.scopes.set(eve_client.esi_scopes.all())
     token.user = request.user
+    if not EveToken.objects.filter(user=token.user, primary=True).exists():
+        token.primary = True
     token.save()
 
     return redirect('app-dashboard')  # TODO: Redirect to EVE Character view
@@ -38,6 +40,7 @@ def remove_sso_token(request, pk):
     eve_token = EveToken.objects.get(pk=pk)
     if request.user == eve_token.user:
         eve_token.delete()
+        messages.success(request, "Successfully deleted EVE Online character")
     else:
         messages.error(request, "You cannot delete someone elses token.")
-    pass
+    return redirect("/")

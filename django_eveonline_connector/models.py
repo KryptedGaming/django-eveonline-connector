@@ -93,9 +93,16 @@ class EveToken(models.Model):
     character = models.OneToOneField(
         "EveCharacter", on_delete=models.CASCADE, related_name="eve_token")
     user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    primary = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('user', 'primary')
 
     def __str__(self):
         return "<%s:%s>" % (self.character, self.user)
+
+    def get_primary_token(self):
+        return EveToken.objects.filter(user=self.user, primary=True).first()
 
     @staticmethod
     def format_scopes(scopes):
