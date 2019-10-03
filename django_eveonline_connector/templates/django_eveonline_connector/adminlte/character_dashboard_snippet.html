@@ -8,24 +8,28 @@
         </tr>
     </thead>
     <tbody>
-        {% for token in request.user.evetoken_set.all %}
+        {% for token in request.user.eve_tokens.all %}
         <tr>
 
             <td class="col-lg-6 col-xs-6">
                 <div class="pull-left" style="padding-right: 8px;">
                     <img width="112px" style="text-align: center; border: 3px solid #000; padding: 0;"
-                        src="https://imageserver.eveonline.com/Character/{{token.character.external_id}}_128.jpg" />
+                        src="https://imageserver.eveonline.com/Character/{{token.evecharacter.external_id}}_128.jpg" />
                 </div>
                 <div>
-                    <b class="hidden-xs">{{token.character.name}}</b>
+                    {% if 'django_eveonline_entity_extensions' not in INSTALLED_APPS %}
+                    <b class="hidden-xs">{{token.evecharacter.name}}</b>
+                    {% else %}
+                    <b class="hidden-xs"><a href="{% url 'django-eveonline-entity-extensions-view-character' token.evecharacter.external_id %}">{{token.evecharacter.name}}</a></b>
+                    {% endif %}
                     <br>
-                    {% if token.character.corporation %}
-                    <i class="hidden-xs">{{token.character.corporation.name}}</i>
+                    {% if token.evecharacter.corporation %}
+                    <i class="hidden-xs">{{token.evecharacter.corporation.name}}</i>
                     {% else %}
                     <i class="hidden-xs">Unknown Corporation</i>
                     {% endif %}
-                    {% if token.character.corporation.alliance %}
-                    <i class="hidden-xs">{{token.character.corporation.name}}</i>
+                    {% if token.evecharacter.corporation.alliance %}
+                    <i class="hidden-xs">{{token.evecharacter.corporation.name}}</i>
                     {% endif %}
                 </div>
             </td>

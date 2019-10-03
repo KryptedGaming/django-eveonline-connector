@@ -1,5 +1,8 @@
 from celery import task, shared_task
-from django_eveonline_connector.models import EveClient, EveCharacter, EveCorporation, EveAlliance
+from .models import *
+from .services.esi.assets import get_eve_character_assets
+from .services.esi.clones import get_eve_character_clones
+from .services.esi.contacts import get_eve_character_contacts
 
 import logging
 logger = logging.getLogger(__name__)
@@ -69,7 +72,6 @@ def update_character_corporation(character_id):
             corporation_id)
 
     eve_character.save()
-
 
 """
 EveCorporation Tasks

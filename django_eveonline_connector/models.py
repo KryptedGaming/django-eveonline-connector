@@ -1,19 +1,25 @@
 from django.db import models
+from django.utils import timezone
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from esipy import EsiClient, EsiSecurity, EsiApp
+import datetime, logging, json
+logger = logging.getLogger(__name__)
 
 """
 OAuth Models
 These models are used for the EVE Online token system
 """
 
-
 class EveScope(models.Model):
     name = models.TextField()
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def get_formatted_scopes():
+        return [ scope.name for scope in EveScope.objects.all() ]
 
 
 class EveClient(models.Model):
@@ -23,22 +29,18 @@ class EveClient(models.Model):
     esi_sso_url = models.URLField(editable=False)  # set on save
     esi_client_id = models.CharField(max_length=255)
     esi_secret_key = models.CharField(max_length=255)
-    esi_scopes = models.ManyToManyField(
-        "EveScope", blank=True)
 
     def save(self, *args, **kwargs):
         if EveClient.objects.all():
             EveClient.objects.all()[0].delete()
-
-        super(EveClient, self).save(*args, **kwargs)
 
         self.esi_sso_url = EsiSecurity(
             client_id=self.esi_client_id,
             redirect_uri=self.esi_callback_url,
             secret_key=self.esi_secret_key,
             headers={'User-Agent': "Krypted Platform"}
-        ).get_auth_uri(scopes=",".join(
-            self.esi_scope.name for self.esi_scope in self.esi_scopes.all()).split(","), state=self.esi_client_id)
+        ).get_auth_uri(scopes=EveScope.get_formatted_scopes(), 
+        state=self.esi_client_id)
 
         super(EveClient, self).save(*args, **kwargs)
 
@@ -46,7 +48,14 @@ class EveClient(models.Model):
         return self.esi_callback_url
 
     @staticmethod
-    def get_eve_client():
+    def call(operation, token=None, **kwargs):
+        if token:
+            token.refresh()
+        esi_client = EveClient.get_esi_client(token=token)
+        return esi_client.request(EveClient.get_esi_app().op[operation](**kwargs)).data
+
+    @staticmethod
+    def get_instance():
         if not EveClient.objects.all():
             raise Exception(
                 "EveClient must be created in administration panel before using EVE Online connector.")
@@ -59,6 +68,9 @@ class EveClient(models.Model):
 
     @staticmethod
     def get_esi_app():
+        """
+        EsiApp is used to get operations for Eve Swagger Interface 
+        """
         if 'esi_app' in cache:
             return cache.get('esi_app')
         else:
@@ -68,11 +80,17 @@ class EveClient(models.Model):
 
     @staticmethod
     def get_esi_client(token=None):
-        return EsiClient(security=EveClient.get_esi_security(), headers={'User-Agent': "Krypted Platform"})
+        """
+        EsiClient is used to call operations for Eve Swagger Interface 
+        """
+        return EsiClient(security=EveClient.get_esi_security(token), headers={'User-Agent': "Krypted Platform"})
 
     @staticmethod
     def get_esi_security(token=None):
-        client = EveClient.get_eve_client()
+        """
+        EsiSecurity is used to refresh and manage EVE Token objects
+        """
+        client = EveClient.get_instance()
         esi_security = EsiSecurity(
             redirect_uri=client.esi_callback_url,
             client_id=client.esi_client_id,
@@ -83,23 +101,25 @@ class EveClient(models.Model):
             esi_security.update_token(token.populate())
         return esi_security
 
-
 class EveToken(models.Model):
     access_token = models.TextField()
     refresh_token = models.TextField()
     expires_in = models.IntegerField(default=0)
     expiry = models.DateTimeField(auto_now_add=True)
     scopes = models.ManyToManyField("EveScope", blank=True)
-    character = models.OneToOneField(
-        "EveCharacter", on_delete=models.CASCADE, related_name="eve_token")
-    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name="eve_tokens")
     primary = models.BooleanField(default=False)
 
-    class Meta:
-        unique_together = ('user', 'primary')
-
     def __str__(self):
-        return "<%s:%s>" % (self.character, self.user)
+        return "<%s:%s>" % (self.evecharacter.name, self.user)
+
+    def save(self, *args, **kwargs):
+        if self.primary and EveToken.objects.filter(user=self.user, primary=True).exists():
+            if self.pk and EveToken.objects.filter(pk=self.pk, user=self.user, primary=True).exists():
+                super(EveToken, self).save(*args, **kwargs)
+            else:
+                raise Exception("Attempted to save a primary character, but primary character already exists.")
+        super(EveToken, self).save(*args, **kwargs)
 
     def get_primary_token(self):
         return EveToken.objects.filter(user=self.user, primary=True).first()
@@ -110,6 +130,18 @@ class EveToken(models.Model):
             return scopes.split(",")
         else:
             return ",".join(scopes)
+
+    def refresh(self):
+        esi_security = EveClient.get_esi_security()
+        esi_security.update_token(self.populate())
+        new_token = esi_security.refresh()
+        if timezone.now() > self.expiry:
+            self.access_token = new_token['access_token']
+            self.refresh_token = new_token['refresh_token']
+            self.expiry = timezone.now() + datetime.timedelta(0, new_token['expires_in'])
+            self.save()
+        else:
+            logger.info("Token refresh not needed")
 
     def populate(self):
         data = {}
@@ -124,11 +156,8 @@ class EveToken(models.Model):
 Entity Models
 These entity models are what all EVE Online data models are attached to.
 """
-
-
 class EveEntity(models.Model):
     name = models.CharField(max_length=128)
-    portrait = models.URLField(max_length=255, blank=True, null=True)
     external_id = models.IntegerField(unique=True)
 
     def __str__(self):
@@ -137,7 +166,9 @@ class EveEntity(models.Model):
 
 class EveCharacter(EveEntity):
     corporation = models.ForeignKey(
-        "EveCorporation", null=True, on_delete=models.SET_NULL)
+        "EveCorporation", on_delete=models.SET_NULL, null=True)
+
+    token = models.OneToOneField("EveToken", on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.name
@@ -166,7 +197,6 @@ class EveCorporation(EveEntity):
         "EveAlliance", blank=True, null=True, on_delete=models.SET_NULL)
 
     def save(self, *args, **kwargs):
-        self.portrait = "https://imageserver.eveonline.com/Corporation/%s_64.png" % self.external_id
         super(EveCorporation, self).save(*args, **kwargs)
 
     @staticmethod
@@ -192,7 +222,6 @@ class EveAlliance(EveEntity):
     ticker = models.CharField(max_length=5)
 
     def save(self, *args, **kwargs):
-        self.portrait = "https://imageserver.eveonline.com/Alliance/%s_32.png" % self.external_id
         super(EveAlliance, self).save(*args, **kwargs)
 
     @staticmethod
@@ -210,24 +239,3 @@ class EveAlliance(EveEntity):
         eve_alliance.save()
 
         return eve_alliance
-
-
-"""
-Data Models
-These models represent EVE Online data for their representative entities.
-"""
-
-
-class EveWalletTransaction(models.Model):
-    client_id = models.IntegerField()
-    date = models.DateTimeField()
-    is_buy = models.BooleanField()
-    is_personal = models.BooleanField()
-    journal_ref_id = models.IntegerField()
-    location_id = models.IntegerField()
-    quantity = models.IntegerField()
-    transcation_id = models.IntegerField()
-    type_id = models.IntegerField()
-    type_name = models.CharField(max_length=32)
-    unit_price = models.FloatField()
-    entity = models.ForeignKey("EveEntity", on_delete=models.CASCADE)
