@@ -10,7 +10,7 @@ BAD_ASSET_CATEGORIES = [42, 43]
 def get_eve_character_assets(character_id):
     logger.info("Gathering token for %s" % character_id)
     token = EveToken.objects.get(evecharacter__external_id=character_id)
-    logger.info("Pulling assets of %s" % token.character.name)
+    logger.info("Pulling assets of %s" % token.evecharacter.name)
     # resolve and clean asset list
     assets = EveClient.call('get_characters_character_id_assets', token, character_id=character_id)
     # purge items not in hangars or asset safety
