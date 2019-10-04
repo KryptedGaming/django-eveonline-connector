@@ -7,6 +7,26 @@ Django EVE Online Connector is a simple Django application that adds models, url
 3. Run `python3 manage.py migrate` to create the django_eveonline_connector models
 4. Run `python3 manage.py loaddata initial_scopes` to load the initial ESI scopes
 
+# Static Database
+The static database is highly recommended, without this many services will be hamstringed by ESI. We recommend the SQLLite database from FuzzWorks. 
+
+The example installation assumes you are in the `krypted/app` folder.
+
+1. Install BZIP for static export file `apt-get install bzip
+2. Get the export `wget https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2`
+3. Decompress `bunzip2 sqlite-latest.sqlite.bz2`
+4. Rename (optional) `mv sqlite-latest.sqlite eve_static.sqlite`
+5. Add the database to the settings file (`eve_static` is what the code looks for)
+
+```
+DATABASES = {
+    'eve_static': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'eve_static_export.sqlite'),
+    }
+}
+```
+
 # Provided URLs
 | URL Name | Description |
 | ------------- | ------------- |
