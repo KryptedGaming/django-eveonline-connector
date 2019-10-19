@@ -3,13 +3,16 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from esipy import EsiClient, EsiSecurity, EsiApp
-import datetime, logging, json
+import datetime
+import logging
+import json
 logger = logging.getLogger(__name__)
 
 """
 OAuth Models
 These models are used for the EVE Online token system
 """
+
 
 class EveScope(models.Model):
     name = models.TextField()
@@ -19,7 +22,7 @@ class EveScope(models.Model):
 
     @staticmethod
     def get_formatted_scopes():
-        return [ scope.name for scope in EveScope.objects.all() ]
+        return [scope.name for scope in EveScope.objects.all()]
 
 
 class EveClient(models.Model):
@@ -39,8 +42,8 @@ class EveClient(models.Model):
             redirect_uri=self.esi_callback_url,
             secret_key=self.esi_secret_key,
             headers={'User-Agent': "Krypted Platform"}
-        ).get_auth_uri(scopes=EveScope.get_formatted_scopes(), 
-        state=self.esi_client_id)
+        ).get_auth_uri(scopes=EveScope.get_formatted_scopes(),
+                       state=self.esi_client_id)
 
         super(EveClient, self).save(*args, **kwargs)
 
@@ -53,6 +56,13 @@ class EveClient(models.Model):
             token.refresh()
         esi_client = EveClient.get_esi_client(token=token)
         return esi_client.request(EveClient.get_esi_app().op[operation](**kwargs)).data
+
+    @staticmethod
+    def call_raw(operation, token=None, **kwargs):
+        if token:
+            token.refresh()
+        esi_client = EveClient.get_esi_client(token=token)
+        return esi_client.request(EveClient.get_esi_app().op[operation](**kwargs))
 
     @staticmethod
     def get_instance():
@@ -101,13 +111,15 @@ class EveClient(models.Model):
             esi_security.update_token(token.populate())
         return esi_security
 
+
 class EveToken(models.Model):
     access_token = models.TextField()
     refresh_token = models.TextField()
     expires_in = models.IntegerField(default=0)
     expiry = models.DateTimeField(auto_now_add=True)
     scopes = models.ManyToManyField("EveScope", blank=True)
-    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name="eve_tokens")
+    user = models.ForeignKey(
+        User, null=True, on_delete=models.CASCADE, related_name="eve_tokens")
     primary = models.BooleanField(default=False)
 
     def __str__(self):
@@ -118,7 +130,8 @@ class EveToken(models.Model):
             if self.pk and EveToken.objects.filter(pk=self.pk, user=self.user, primary=True).exists():
                 super(EveToken, self).save(*args, **kwargs)
             else:
-                raise Exception("Attempted to save a primary character, but primary character already exists.")
+                raise Exception(
+                    "Attempted to save a primary character, but primary character already exists.")
         super(EveToken, self).save(*args, **kwargs)
 
     def get_primary_token(self):
@@ -138,7 +151,8 @@ class EveToken(models.Model):
         if timezone.now() > self.expiry:
             self.access_token = new_token['access_token']
             self.refresh_token = new_token['refresh_token']
-            self.expiry = timezone.now() + datetime.timedelta(0, new_token['expires_in'])
+            self.expiry = timezone.now() + datetime.timedelta(0,
+                                                              new_token['expires_in'])
             self.save()
         else:
             logger.info("Token refresh not needed")
@@ -156,6 +170,8 @@ class EveToken(models.Model):
 Entity Models
 These entity models are what all EVE Online data models are attached to.
 """
+
+
 class EveEntity(models.Model):
     name = models.CharField(max_length=128)
     external_id = models.IntegerField(unique=True)
@@ -168,7 +184,8 @@ class EveCharacter(EveEntity):
     corporation = models.ForeignKey(
         "EveCorporation", on_delete=models.SET_NULL, null=True)
 
-    token = models.OneToOneField("EveToken", on_delete=models.SET_NULL, null=True)
+    token = models.OneToOneField(
+        "EveToken", on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.name

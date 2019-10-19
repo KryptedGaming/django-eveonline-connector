@@ -42,6 +42,29 @@ def resolve_type_id_to_group_id(type_id):
     return get_type_id(type_id)['group_id']
 
 
+def resolve_group_id_to_group_name(group_id):
+    from django.db.utils import ConnectionDoesNotExist
+    try:
+        with connections['eve_static'].cursor() as cursor:
+            cursor.execute(
+                "select groupName from invGroups where groupID = %s" % group_id)
+            row = str(cursor.fetchone()[0])
+        return row
+    except ConnectionDoesNotExist as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+    except Exception as e:
+        logger.error(
+            "Error resolving EVE type_id(%s) to group_id: %s" % (type_id, e))
+    logger.warning("Resolving group_id using ESI")
+    return get_group_id(group_id)['name']
+
+
+def resolve_type_id_to_group_name(type_id):
+    group_id = resolve_type_id_to_group_id(type_id)
+    return resolve_group_id_to_group_name(group_id)
+
+
 def resolve_group_id_to_category_id(group_id):
     from django.db.utils import ConnectionDoesNotExist
     try:
