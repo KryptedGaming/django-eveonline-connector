@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope
+from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation
 from django.contrib import messages
 
 import logging
@@ -65,3 +65,14 @@ def remove_sso_token(request, pk):
     else:
         messages.error(request, "You cannot delete someone elses token.")
     return redirect("/")
+
+
+def view_characters(request):
+    return render(request, 'django_eveonline_connector/adminlte/view_characters.html',context = {
+        'characters': EveCharacter.objects.all()
+    })
+
+def view_corporations(request):
+    return render(request, 'django_eveonline_connector/adminlte/view_corporations.html',context = {
+        'corporations': EveCharacter.objects.all()
+    })

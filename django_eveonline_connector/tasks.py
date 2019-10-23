@@ -12,7 +12,7 @@ Global Tasks
 These are what users register to maintain up-to-date EveEntity information.
 """
 @shared_task
-def update_characters():
+def update_all_characters():
     for eve_character in EveCharacter.objects.all():
         update_character_portrait.apply_async(args=[eve_character.external_id])
         update_character_corporation.apply_async(
@@ -20,7 +20,7 @@ def update_characters():
 
 
 @shared_task
-def update_corporations():
+def update_all_corporations():
     for eve_corporation in EveCorporation.objects.all():
         update_corporation_alliance.apply_async(
             args=[eve_corporation.external_id])
@@ -29,7 +29,7 @@ def update_corporations():
 
 
 @shared_task
-def update_alliances():
+def update_all_alliances():
     for eve_alliance in EveAlliance.objects.all():
         update_alliance_executor.apply_async(args=[eve_alliance.external_id])
 

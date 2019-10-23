@@ -13,3 +13,8 @@ urlpatterns = [
     path('sso/token/remove/<int:pk>/', views.remove_sso_token,
          name="django-eveonline-connector-sso-token-remove"),
 ]
+
+urlpatterns += [
+     path('characters/', views.view_characters, name="django-eveonline-connector-characters-view"),
+     path('corporations/', views.view_corporations, name="django-eveonline-connector-corporations-view"),
+]
