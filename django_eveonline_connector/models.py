@@ -123,7 +123,10 @@ class EveToken(models.Model):
     primary = models.BooleanField(default=False)
 
     def __str__(self):
-        return "<%s:%s>" % (self.evecharacter.name, self.user)
+        try:
+            return "<%s:%s>" % (self.evecharacter.name, self.user)
+        except Exception as e:
+            return "<%s:%s>" % ("Unknown Character", self.user)
 
     def save(self, *args, **kwargs):
         if self.primary and EveToken.objects.filter(user=self.user, primary=True).exists():
@@ -136,6 +139,12 @@ class EveToken(models.Model):
 
     def get_primary_token(self):
         return EveToken.objects.filter(user=self.user, primary=True).first()
+    
+    def get_primary_character(self):
+        if self.primary == True: 
+            return None 
+        else:
+            return self.get_primary_token().evecharacter
 
     @staticmethod
     def format_scopes(scopes):

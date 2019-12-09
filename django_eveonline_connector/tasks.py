@@ -14,7 +14,6 @@ These are what users register to maintain up-to-date EveEntity information.
 @shared_task
 def update_all_characters():
     for eve_character in EveCharacter.objects.all():
-        update_character_portrait.apply_async(args=[eve_character.external_id])
         update_character_corporation.apply_async(
             args=[eve_character.external_id])
 
@@ -38,22 +37,6 @@ def update_all_alliances():
 EveCharacter Tasks
 These tasks are used to keep EveCharacter attributes up to date.
 """
-
-
-@shared_task
-def update_character_portrait(character_id):
-    esi_operation = EveClient.get_esi_app(
-    ).op['get_characters_character_id_portrait'](character_id=character_id)
-    response = EveClient.get_esi_client().request(esi_operation)
-
-    if 'px64x64' not in response.data:
-        raise Exception(
-            "Portrait (px64x64) not found in response for character_id %s" % character_id)
-
-    eve_character = EveCharacter.objects.get(external_id=character_id)
-    eve_character.portrait = response.data['px64x64'].replace("http", "https")
-    eve_character.save()
-
 
 @shared_task
 def update_character_corporation(character_id):

@@ -13,8 +13,8 @@
 
             <td class="col-lg-6 col-xs-6">
                 <div class="pull-left" style="padding-right: 8px;">
-                    <img width="112px" style="text-align: center; border: 3px solid #000; padding: 0;"
-                        src="https://imageserver.eveonline.com/Character/{{token.evecharacter.external_id}}_128.jpg" />
+                    <img width="36px" style="text-align: center; border: 3px solid #000; padding: 0;"
+                        src="https://imageserver.eveonline.com/Character/{{token.evecharacter.external_id}}_64.jpg" />
                 </div>
                 <div>
                     {% if 'django_eveonline_entity_extensions' not in INSTALLED_APPS %}
@@ -36,12 +36,9 @@
             </td>
 
             <td class="col-lg-6 col-xs-6">
-                <div class=" col-lg-12" >
-                    <button onclick="location.href='#'"  class="btn-block btn btn-success btn-fill">Update Token</button>
-                    <button onclick="location.href='#'"  class="btn-block btn btn-warning btn-fill">Refresh
-                        Character</button>
-                    <button onclick="location.href='#'"  class="btn-block btn btn-danger btn-fill">Delete
-                        Token</button>
+                <div style="display: flex;" class="btn-group btn-block">
+                    <a href="{% url 'django-eveonline-connector-character-refresh' token.evecharacter.external_id %}" style="flex: 1" class="btn btn-success"><i class="fa fa-refresh"></i></a>
+                    <a href="{% url 'django-eveonline-connector-sso-token-remove' token.pk %}" style="flex: 1" class="btn btn-danger"><i class="fa fa-times"></i></a>
                 </div>
             </td>
         </tr>

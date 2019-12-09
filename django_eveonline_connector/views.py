@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation
 from django.contrib import messages
+from django_eveonline_connector.tasks import update_character_corporation
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,6 +67,10 @@ def remove_sso_token(request, pk):
         messages.error(request, "You cannot delete someone elses token.")
     return redirect("/")
 
+def refresh_character(request, external_id):
+    update_character_corporation(external_id)
+    messages.success(request, "Character successfully updated")
+    return redirect("/")
 
 def view_characters(request):
     return render(request, 'django_eveonline_connector/adminlte/view_characters.html',context = {

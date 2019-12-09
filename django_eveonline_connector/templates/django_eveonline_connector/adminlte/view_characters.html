@@ -26,7 +26,8 @@ EVE Online - Characters
         <thead>
             <tr>
                 <th>Verified</th>
-                <th>Name</th>
+                <th>Character</th>
+                <th>Primary Character</th>
                 <th>Corporation</th>
                 <th>Alliance</th>
             </tr>
@@ -44,7 +45,7 @@ EVE Online - Characters
 
                 <td>
                     <div class="pull-left" style="padding-right: 8px;">
-                       <img width="16px" src="https://imageserver.eveonline.com/character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
+                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
                        {% if 'django_eveonline_entity_extensions' in INSTALLED_APPS %}
                        <a href="{% url 'django-eveonline-entity-extensions-view-character' character.external_id %}">{{character.name}}</a>
                        {% else %}
@@ -54,13 +55,26 @@ EVE Online - Characters
                 </td>
 
                 <td>
-                    <img width="16px" src="https://imageserver.eveonline.com/corporation/{{character.corporation.external_id}}_64.png" class="img-circle" alt="Avatar">
+                    <div class="pull-left" style="padding-right: 8px;">
+                    {% if character.token.get_primary_character %}
+                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.token.get_primary_character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
+                       {% if 'django_eveonline_entity_extensions' in INSTALLED_APPS %}
+                       <a href="{% url 'django-eveonline-entity-extensions-view-character' character.token.get_primary_character.external_id %}">{{character.token.get_primary_character.name}}</a>
+                       {% else %}
+                       {{character.name}}
+                       {% endif %}
+                    {% endif %}
+                    </div>
+                </td>
+
+                <td>
+                    <img width="16px" src="https://imageserver.eveonline.com/Corporation/{{character.corporation.external_id}}_64.png" class="img-circle" alt="Avatar">
                     {{character.corporation}}
                 </td>
 
                 <td>
                 {% if character.corporation.alliance %}
-                <img width="16px" src="https://imageserver.eveonline.com/alliance/{{character.corporation.alliance.external_id}}_64.png" class="img-circle" alt="Avatar">
+                <img width="16px" src="https://imageserver.eveonline.com/Alliance/{{character.corporation.alliance.external_id}}_64.png" class="img-circle" alt="Avatar">
                 {{character.corporation.alliance}}
                 {% else %}
                 None 
