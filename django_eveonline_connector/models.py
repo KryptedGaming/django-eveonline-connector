@@ -29,7 +29,7 @@ class EveClient(models.Model):
     esi_base_url = models.URLField(
         default="https://esi.evetech.net/latest/swagger.json?datasource=tranquility")
     esi_callback_url = models.URLField()
-    esi_sso_url = models.URLField(editable=False, max_length=255)  # set on save
+    esi_sso_url = models.URLField(editable=False, max_length=512)  # set on save
     esi_client_id = models.CharField(max_length=255)
     esi_secret_key = models.CharField(max_length=255)
 
