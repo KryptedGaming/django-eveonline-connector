@@ -194,7 +194,7 @@ class EveCharacter(EveEntity):
         "EveCorporation", on_delete=models.SET_NULL, null=True)
 
     token = models.OneToOneField(
-        "EveToken", on_delete=models.CASCADE, null=True)
+        "EveToken", on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.name
