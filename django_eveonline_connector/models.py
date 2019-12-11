@@ -142,7 +142,7 @@ class EveToken(models.Model):
     
     def get_primary_character(self):
         if self.primary == True: 
-            return None 
+            return self.evecharacter
         else:
             return self.get_primary_token().evecharacter
 
@@ -194,7 +194,7 @@ class EveCharacter(EveEntity):
         "EveCorporation", on_delete=models.SET_NULL, null=True)
 
     token = models.OneToOneField(
-        "EveToken", on_delete=models.SET_NULL, null=True)
+        "EveToken", on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.name
