@@ -22,7 +22,9 @@ def get_eve_character_clones(character_id):
                 "item_name": resolve_type_id_to_type_name(implant)
             }
 
+    logger.debug("Structure names to resolve: %s" % structure_ids)
     structure_names = resolve_structure_ids(token=token, structure_ids=structure_ids)
+    logger.debug("Structure resolutions: %s" % structure_names)
     
     # build read-able clone list
     for clone in clones_response['jump_clones']:

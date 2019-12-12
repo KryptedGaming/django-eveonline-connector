@@ -55,7 +55,7 @@ def resolve_group_id_to_group_name(group_id):
             "EVE static database is not installed: this slows down your tasks")
     except Exception as e:
         logger.error(
-            "Error resolving EVE type_id(%s) to group_id: %s" % (type_id, e))
+            "Error resolving EVE type_id(%s) to group_id: %s" % (group_id, e))
     logger.warning("Resolving group_id using ESI")
     return get_group_id(group_id)['name']
 

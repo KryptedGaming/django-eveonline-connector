@@ -30,20 +30,19 @@ def sso_callback(request):
     new_token.scopes.set(EveScope.objects.all())
 
     # find or create character
-    character = EveCharacter.objects.get_or_create(
-        external_id=esi_character['sub'].split(":")[-1],
-        name=esi_character['name'],
-    )[0]
-
-    # delete old token if exists
-    if character.token:
-        logger.info("Deleting existing token for %s" % esi_character['name'])
-        old_token = character.token 
-        old_token.delete()
-
-    # set character token
-    character.token = new_token
-    character.save()
+    if EveCharacter.objects.filter(external_id=esi_character['sub'].split(":")[-1]).exists():
+        character = EveCharacter.objects.get(external_id=esi_character['sub'].split(":")[-1])
+        if character.token:
+            old_token = character.token 
+            old_token.delete()
+        character.token = new_token 
+        character.save()
+    else:
+        character = EveCharacter.objects.create(
+            external_id=esi_character['sub'].split(":")[-1],
+            name=esi_character['name'],
+            token=new_token,
+        )
 
     # if no primary token, set as primary token
     if not EveToken.objects.filter(user=request.user, primary=True).exists():
