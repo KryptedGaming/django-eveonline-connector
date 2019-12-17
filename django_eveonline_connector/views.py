@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation
 from django.contrib import messages
 from django_eveonline_connector.tasks import update_character_corporation
+from django.contrib.auth.decorators import login_required, permission_required
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 """
 SSO Views
 """
+@login_required
 def sso_callback(request):
     code = request.GET.get('code', None)
     eve_client = EveClient.get_instance()
@@ -52,11 +54,11 @@ def sso_callback(request):
 
     return redirect('app-dashboard')  # TODO: Redirect to EVE Character view
 
-
+@login_required
 def add_sso_token(request):
     return redirect(EveClient.get_instance().esi_sso_url)
 
-
+@login_required
 def remove_sso_token(request, pk):
     eve_token = EveToken.objects.get(pk=pk)
     if request.user == eve_token.user:
@@ -66,16 +68,21 @@ def remove_sso_token(request, pk):
         messages.error(request, "You cannot delete someone elses token.")
     return redirect("/")
 
+@login_required
 def refresh_character(request, external_id):
     update_character_corporation(external_id)
     messages.success(request, "Character successfully updated")
     return redirect("/")
 
+@login_required
+@permission_required('django_eveonline_connector.view_evecharacter', raise_exception=True)
 def view_characters(request):
     return render(request, 'django_eveonline_connector/adminlte/view_characters.html',context = {
         'characters': EveCharacter.objects.all()
     })
 
+@login_required
+@permission_required('django_eveonline_connector.view_evecorporation', raise_exception=True)
 def view_corporations(request):
     return render(request, 'django_eveonline_connector/adminlte/view_corporations.html',context = {
         'corporations': EveCharacter.objects.all()
