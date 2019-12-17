@@ -3,6 +3,7 @@ from django_eveonline_connector.models import EveClient, EveToken, EveCharacter,
 from django.contrib import messages
 from django_eveonline_connector.tasks import update_character_corporation
 from django.contrib.auth.decorators import login_required, permission_required
+from .tasks import update_character_corporation
 
 import logging
 logger = logging.getLogger(__name__)
@@ -51,6 +52,8 @@ def sso_callback(request):
         logger.info("Setting primary token as %s for %s" % (esi_character['name'], request.user))
         new_token.primary = True 
         new_token.save()
+
+    update_character_corporation.apply_async(args=[character.external_id])
 
     return redirect('app-dashboard')  # TODO: Redirect to EVE Character view
 
