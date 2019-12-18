@@ -14,6 +14,10 @@ def resolve_ids(ids):
             response[external_id] = external_name
     return response
 
+def resolve_names(names):
+    resolved_ids = EveClient.call('post_universe_ids', token=None, names=names)
+    return resolved_ids
+
 
 def resolve_ids_with_types(ids):
     resolved_ids = EveClient.call('post_universe_names', token=None, ids=ids)

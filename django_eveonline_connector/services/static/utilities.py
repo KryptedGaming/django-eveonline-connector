@@ -1,5 +1,5 @@
 from django.db import connections
-from django_eveonline_connector.services.esi.universe import get_type_id, get_station_id, get_group_id
+from django_eveonline_connector.services.esi.universe import get_type_id, get_station_id, get_group_id, resolve_names
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,24 @@ def resolve_type_id_to_type_name(type_id):
 
     logger.warning("Resolving type_id using ESI")
     return get_type_id(type_id)['name']
+
+def resolve_type_name_to_type_id(type_name):
+    from django.db.utils import ConnectionDoesNotExist
+    try:
+        with connections['eve_static'].cursor() as cursor:
+            cursor.execute(
+                "select typeID from invTypes where typeName = %s" % type_name)
+            row = str(cursor.fetchone()[0])
+        return row
+    except ConnectionDoesNotExist as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+    except Exception as e:
+        logger.error(
+            "Error resolving EVE type_name(%s) to type_id: %s" % (type_name, e))
+
+    logger.warning("Resolving type_name using ESI")
+    return resolve_names(type_name)['inventory_types'][0]['id']
 
 
 def resolve_type_id_to_group_id(type_id):
