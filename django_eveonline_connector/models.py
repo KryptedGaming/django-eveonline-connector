@@ -144,7 +144,11 @@ class EveToken(models.Model):
         if self.primary == True: 
             return self.evecharacter
         else:
-            return self.get_primary_token().evecharacter
+            token = self.get_primary_token()
+            if token:
+                return token.evecharacter
+            else:
+                return None
 
     @staticmethod
     def format_scopes(scopes):
