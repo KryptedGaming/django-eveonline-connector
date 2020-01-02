@@ -103,7 +103,7 @@ def update_corporation_ceo(corporation_id):
 
 @shared_task
 def pull_corporation_roster(corporation_id):
-    token = EveToken.objects.get(evecharacter__corporation__external_id=corporation_id)
+    token = EveToken.objects.filter(evecharacter__corporation__external_id=corporation_id).first()
     roster = EveClient.call('get_corporations_corporation_id_members', token=token, corporation_id=corporation_id)
     for character in roster:
         try:
