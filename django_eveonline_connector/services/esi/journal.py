@@ -34,7 +34,6 @@ def get_eve_character_journal(character_id, ignore_ids=[]):
         journal.append(entry)
 
     # return empty journal
-    print(journal)
     if len(journal) == 0:
         return journal
 
