@@ -93,7 +93,10 @@ class EveClient(models.Model):
         """
         EsiClient is used to call operations for Eve Swagger Interface 
         """
-        return EsiClient(security=EveClient.get_esi_security(token), headers={'User-Agent': "Krypted Platform"})
+        if token:
+            return EsiClient(security=EveClient.get_esi_security(token), headers={'User-Agent': "Krypted Platform"})
+        else:
+            return EsiClient(headers={'User-Agent': "Krypted Platform"})
 
     @staticmethod
     def get_esi_security(token=None):

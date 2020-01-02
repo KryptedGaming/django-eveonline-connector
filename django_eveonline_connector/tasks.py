@@ -101,6 +101,15 @@ def update_corporation_ceo(corporation_id):
 
     eve_corporation.save()
 
+@shared_task
+def pull_corporation_roster(corporation_id):
+    token = EveToken.objects.get(evecharacter__corporation__external_id=corporation_id)
+    roster = EveClient.call('get_corporations_corporation_id_members', token=token, corporation_id=corporation_id)
+    for character in roster:
+        try:
+            EveCharacter.create_from_external_id(character)
+        except Exception as e:
+            logger.warning("Skipping %s in corporation roster" % character)
 
 """
 EveAlliance Tasks
