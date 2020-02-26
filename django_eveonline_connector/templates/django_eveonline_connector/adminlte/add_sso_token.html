@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+EVE Online - Select Token Type
+{% endblock %}
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    {% block header %}
+    EVE Online
+    {% endblock %}
+
+    {% block description %}
+    Select Token Type
+    {% endblock %}
+
+    <!-- Main content -->
+    {% block content %}
+    
+    <div class="box box-primary box-solid">
+        <div class="box-header">
+            <h1 class="box-title">Available Token Types</h1>
+        </div>
+        <div class="box-body">
+            <table class="datatable table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th class="col-lg-2 col-md-2 col-xs-1">Token Type</th>
+                        <th>Description</th>
+                        <th class="col-lg-2 col-md-2 col-xs-1">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for token_type in token_types %}
+                    <tr>
+                        <td>{{token_type.name}}</td>
+                        <td>{{token_type.description}}</td>
+                        <td><a href="{% url 'django-eveonline-connector-sso-token-add' token_type.name %}" class="btn btn-success btn-block">Add {{token_type.name}} Token</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endblock %}
+    <!-- /.content -->
+</div>
+
+{% block scripts %}
+<script>
+$(function () {
+    $('table').DataTable({
+      'paging'      : false,
+      'lengthChange': false,
+      'searching'   : false,
+      'ordering'    : false,
+      'info'        : false,
+      'autoWidth'   : false
+    })
+ })
+</script>
+{% endblock %}

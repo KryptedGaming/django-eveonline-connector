@@ -21,29 +21,23 @@ class EveScope(models.Model):
         return self.name
 
     @staticmethod
-    def get_formatted_scopes():
-        return [scope.name for scope in EveScope.objects.all()]
+    def convert_to_list(scopes):
+        return [scope.name for scope in scopes]
 
+    @staticmethod
+    def convert_to_string(scopes):
+        return ",".join([scope.name for scope in scopes])
 
 class EveClient(models.Model):
     esi_base_url = models.URLField(
         default="https://esi.evetech.net/latest/swagger.json?datasource=tranquility")
     esi_callback_url = models.URLField()
-    esi_sso_url = models.URLField(editable=False, max_length=2056)  # set on save
     esi_client_id = models.CharField(max_length=255)
     esi_secret_key = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
         if EveClient.objects.all():
             EveClient.objects.all()[0].delete()
-
-        self.esi_sso_url = EsiSecurity(
-            client_id=self.esi_client_id,
-            redirect_uri=self.esi_callback_url,
-            secret_key=self.esi_secret_key,
-            headers={'User-Agent': "Krypted Platform"}
-        ).get_auth_uri(scopes=EveScope.get_formatted_scopes(),
-                       state=self.esi_client_id)
 
         super(EveClient, self).save(*args, **kwargs)
 
@@ -114,6 +108,25 @@ class EveClient(models.Model):
             esi_security.update_token(token.populate())
         return esi_security
 
+class EveTokenType(models.Model):
+    name = models.CharField(max_length=32, unique=True)
+    description = models.CharField(max_length=64)
+    scopes = models.ManyToManyField("EveScope", blank=True)
+    esi_sso_url = models.URLField(
+        editable=False, max_length=2056)  # set on save
+
+    def __str__(self):
+        return self.name
+
+    def get_scopes_list(self):
+        if self.scopes.all():
+            return EveScope.convert_to_list(self.scopes.all())
+        return []
+
+    def get_scopes_string(self):
+        if self.scopes.all():
+            return EveScope.convert_to_string(self.scopes.all())
+        return []
 
 class EveToken(models.Model):
     access_token = models.TextField()
@@ -142,9 +155,9 @@ class EveToken(models.Model):
 
     def get_primary_token(self):
         return EveToken.objects.filter(user=self.user, primary=True).first()
-    
+
     def get_primary_character(self):
-        if self.primary == True: 
+        if self.primary == True:
             return self.evecharacter
         else:
             token = self.get_primary_token()
@@ -152,13 +165,6 @@ class EveToken(models.Model):
                 return token.evecharacter
             else:
                 return None
-
-    @staticmethod
-    def format_scopes(scopes):
-        if type(scopes) is str:
-            return scopes.split(",")
-        else:
-            return ",".join(scopes)
 
     def refresh(self):
         esi_security = EveClient.get_esi_security()

@@ -29,5 +29,5 @@ Quick start
 Urls 
 -----------
 django-eveonline-connector-sso-callback
-django-eveonline-connector-sso-token-add
+django-eveonline-connector-sso-token-type-select
 django-eveonline-connector-sso-token-remove
