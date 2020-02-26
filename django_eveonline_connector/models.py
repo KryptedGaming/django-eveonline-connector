@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.core.cache import cache
+from django.apps import apps 
 from django.contrib.auth.models import User
 from esipy import EsiClient, EsiSecurity, EsiApp
 import datetime
@@ -45,11 +46,46 @@ class EveClient(models.Model):
         return self.esi_callback_url
 
     @staticmethod
-    def call(operation, token=None, **kwargs):
-        if token:
+    def call(op, **kwargs):
+        operation = EveClient.get_esi_app().op[op]
+        # Pull the required scopes from the ESI Swagger Definition
+        required_scopes = set() 
+        if operation.security:
+            for definition in operation.security:
+                if 'evesso' in definition: 
+                    for scope_name in definition['evesso']:
+                        scope_creation = EveScope.objects.get_or_create(name=scope_name)
+                        scope = scope_creation[0]
+                        if scope_creation[1]:
+                            logger.error("Encountered unknown scope '%s', please notify Krypted developers." % scope)
+                        required_scopes.add(scope)
+        
+        # Find the token with proper scopes and access 
+        if required_scopes:
+            if 'character_id' in kwargs: 
+                token = EveToken.objects.get(evecharacter__external_id=kwargs.get('character_id'), scopes__in=required_scopes) 
+
+            if 'corporation_id' in kwargs:
+                # we require a CEO token for corporaition actions
+                try: 
+                    eve_corporation = EveCorporation.objects.get(external_id=kwargs.get('corporation_id'))
+                except EveCorporation.DoesNotExist:
+                    raise Exception("Attempted to pull protected ESI data from EveCorporation that does not exist")
+                
+                if not eve_corporation.ceo:
+                    raise Exception("Attempted to pull information for EveCorporation with non-existent CEO EveToken")
+
+                token_pk = eve_corporation.ceo.token.pk
+                EveToken.objects.get(pk=token_pk, scopes__in=required_scopes)
+        else: 
+            token = None 
+
+        
+        if token: 
             token.refresh()
-        esi_client = EveClient.get_esi_client(token=token)
-        return esi_client.request(EveClient.get_esi_app().op[operation](**kwargs)).data
+            return EveClient.get_esi_client(token=token).request(operation(**kwargs)) 
+        else: 
+            return EveClient.get_esi_client().request(operation(**kwargs)) 
 
     @staticmethod
     def call_raw(operation, token=None, **kwargs):
@@ -60,15 +96,17 @@ class EveClient(models.Model):
 
     @staticmethod
     def get_instance():
-        if not EveClient.objects.all():
-            raise Exception(
-                "EveClient must be created in administration panel before using EVE Online connector.")
-        else:
-            if 'X-Esi-Error-Limited' in cache and cache.get('X-Esi-Error-Limited') <= 1:
-                logger.error(
-                    "EveClient has hit ESI Error limit, not allowing any EveClient instances")
-                return None
+        app_config = apps.get_app_config('django_eveonline_connector')
+        if app_config.ESI_SECRET_KEY and app_config.ESI_CLIENT_ID and app_config.ESI_CALLBACK_URL and app_config.ESI_BASE_URL:    
+            return EveClient(
+                    esi_client_id=app_config.ESI_CLIENT_ID,
+                    esi_secret_key=app_config.ESI_SECRET_KEY,
+                    esi_callback_url=app_config.ESI_CALLBACK_URL,
+                    esi_base_url=app_config.ESI_BASE_URL,
+                )
+        elif EveClient.objects.all():
             return EveClient.objects.all()[0]
+        raise Exception("EveClient is not configured.")
 
     @staticmethod
     def get_esi_app():
@@ -107,6 +145,10 @@ class EveClient(models.Model):
         if token:
             esi_security.update_token(token.populate())
         return esi_security
+
+    class Meta:
+        verbose_name = "Eve Settings"
+        verbose_name_plural = "Eve Settings"
 
 class EveTokenType(models.Model):
     name = models.CharField(max_length=32, unique=True)
@@ -192,8 +234,6 @@ class EveToken(models.Model):
 Entity Models
 These entity models are what all EVE Online data models are attached to.
 """
-
-
 class EveEntity(models.Model):
     name = models.CharField(max_length=128)
     external_id = models.IntegerField(unique=True)
