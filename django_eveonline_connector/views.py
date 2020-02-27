@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation, EveTokenType
+from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation, EveTokenType, PrimaryEveCharacterAssociation
 from django.contrib import messages
 from django_eveonline_connector.tasks import update_character_corporation
 from django.contrib.auth.decorators import login_required, permission_required
@@ -13,6 +13,7 @@ SSO Views
 """
 @login_required
 def sso_callback(request):
+    print(request.GET)
     code = request.GET.get('code', None)
     eve_client = EveClient.get_instance()
 
@@ -48,12 +49,12 @@ def sso_callback(request):
             token=new_token,
         )
 
-    # if no primary token, set as primary token
-    if not EveToken.objects.filter(user=request.user, primary=True).exists():
-        logger.info("Setting primary token as %s for %s" %
-                    (esi_character['name'], request.user))
-        new_token.primary = True
-        new_token.save()
+    # if no primary user, set 
+    if not PrimaryEveCharacterAssociation(user=request.user):
+        PrimaryEveCharacterAssociation.objects.create(
+            user=request.user,
+            character=character
+        )
 
     update_character_corporation.apply_async(args=[character.external_id])
 

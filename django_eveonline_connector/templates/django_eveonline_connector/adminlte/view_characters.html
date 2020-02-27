@@ -56,10 +56,10 @@ EVE Online - Characters
 
                 <td>
                     <div class="pull-left" style="padding-right: 8px;">
-                    {% if character.token.get_primary_character %}
-                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.token.get_primary_character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
+                    {% if character.token.user.primary_evecharacter %}
+                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.token.user.primary_evecharacter.get_character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
                        {% if 'django_eveonline_entity_extensions' in INSTALLED_APPS %}
-                       <a href="{% url 'django-eveonline-entity-extensions-view-character' character.token.get_primary_character.external_id %}">{{character.token.get_primary_character.name}}</a>
+                       <a href="{% url 'django-eveonline-entity-extensions-view-character' character.token.user.primary_evecharacter.get_character.external_id %}">{{character.token.user.primary_evecharacter.get_character.name}}</a>
                        {% else %}
                        {{character.name}}
                        {% endif %}

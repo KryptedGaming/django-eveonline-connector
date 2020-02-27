@@ -61,7 +61,6 @@ EveCorporation Tasks
 These tasks are used to keep EveCorporation attributes up to date.
 """
 
-
 @shared_task
 def update_corporation_alliance(corporation_id):
     esi_operation = EveClient.get_esi_app(
@@ -84,7 +83,6 @@ def update_corporation_alliance(corporation_id):
             alliance_id)
 
     eve_corporation.save()
-
 
 @shared_task
 def update_corporation_ceo(corporation_id):
