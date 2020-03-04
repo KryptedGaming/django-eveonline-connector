@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.apps import apps 
 import datetime, logging, json, traceback
 logger = logging.getLogger(__name__)
-
+app_config = apps.get_app_config('django_eveonline_connector')
 
 """
 ESI Models
@@ -269,7 +269,26 @@ These models represent entity data
 """
 from django_eveonline_connector.utilities.esi.universe import *
 from django_eveonline_connector.utilities.static.database_helpers import *
-class EveAsset(models.Model):
+class EveEntityData(models.Model):
+    entity = models.ForeignKey(EveEntity, on_delete=models.CASCADE)
+
+    @staticmethod
+    def _create_from_esi_row(data_row, entity_external_id):
+        raise NotImplementedError
+
+    @classmethod
+    def create_from_esi_row(cls, data_row, entity_external_id):
+        try:
+             db_object = cls._create_from_esi_row(data_row, entity_external_id)
+             db_object.entity = EveEntity.objects.get(external_id=entity_external_id)
+             db_object.save()
+        except Exception as e:
+            logger.warning("Failed to create %s from ESI data. ESI Data: %s." % (cls.__name__, data_row))
+            logger.exception(e)
+    class Meta:
+        abstract = True 
+
+class EveAsset(EveEntityData):
     # ESI Data 
     is_blueprint_copy = models.BooleanField()
     is_singleton = models.BooleanField() 
@@ -289,62 +308,134 @@ class EveAsset(models.Model):
     item_type = models.CharField(max_length=32) # categoryName
     location = models.CharField(max_length=128)
 
-    entity = models.ForeignKey(EveEntity, 
-        on_delete=models.CASCADE, 
-        related_name="assets")
-
     @staticmethod
     def get_bad_asset_categories():
-        app_config = apps.get_app_config('django_eveonline_connector')
         return app_config.ESI_BAD_ASSET_CATEGORIES
 
     @staticmethod
-    def create_from_esi_row(data_row, entity_external_id):
-        try: 
-            # Store what ESI returns 
-            asset = EveAsset(
-                is_singleton=data_row['is_singleton'],
-                item_id=data_row['item_id'],
-                location_flag=data_row['location_flag'],
-                location_id=data_row['location_id'],
-                location_type=data_row['location_type'],
-                quantity=data_row['quantity'],
-                type_id=data_row['type_id'])
-            
-            # Handle optional ESI fields 
-            if 'is_blueprint_copy' in data_row:
-                asset.is_blueprint_copy = True 
-            else:
-                asset.is_blueprint_copy = False 
+    def _create_from_esi_row(data_row, entity_external_id):
+        # Store what ESI returns 
+        asset = EveAsset(
+            is_singleton=data_row['is_singleton'],
+            item_id=data_row['item_id'],
+            location_flag=data_row['location_flag'],
+            location_id=data_row['location_id'],
+            location_type=data_row['location_type'],
+            quantity=data_row['quantity'],
+            type_id=data_row['type_id'])
+        
+        # Handle optional ESI fields 
+        if 'is_blueprint_copy' in data_row:
+            asset.is_blueprint_copy = True 
+        else:
+            asset.is_blueprint_copy = False 
 
-            # Map useful static data
-            asset.group_id = resolve_type_id_to_group_id(asset.type_id)
-            asset.category_id = resolve_type_id_to_category_id(asset.type_id)
+        # Map useful static data
+        asset.group_id = resolve_type_id_to_group_id(asset.type_id)
+        asset.category_id = resolve_type_id_to_category_id(asset.type_id)
 
-            # Use the static database to resolve EVE Model IDs
-            asset.item_name = resolve_type_id_to_type_name(asset.type_id)
-            asset.item_type = resolve_type_id_to_category_name(asset.type_id)
+        # Use the static database to resolve EVE Model IDs
+        asset.item_name = resolve_type_id_to_type_name(asset.type_id)
+        asset.item_type = resolve_type_id_to_category_name(asset.type_id)
 
-            # Location IDs suck to resolve, we must do different things for each type
-            try:
-                if asset.location_type == 'station':
-                    asset.location = resolve_location_id_to_station(asset.location_id)
-                elif asset.location_type == 'other':
-                    asset.location = get_structure_id(asset.location_id)
-                else:
-                    asset.location = "Unknown Location"
-            except Exception as e:
-                asset.location = "Unknown Location"
-                logger.error("Failed to resolve location for asset: %s" % str(e))
+        # Location IDs suck to resolve, we must do different things for each type
+        asset.location = resolve_location_from_location_id_location_type(
+            asset.location_id, 
+            asset.location_type,
+            entity_external_id)
 
-            asset.entity = EveEntity.objects.get(external_id=entity_external_id)
-            asset.save() 
+        return asset 
 
-        except Exception as e:
-            logging.exception("""Failed to create EveAsset from ESI data.
-            ESI Data: %s, 
-            """ % (data_row)
-            )
+class EveJumpClone(EveEntityData):
+    # ESI Data 
+    location_id = models.IntegerField()
+    location_type = models.CharField(max_length=64)
+    jump_clone_id = models.IntegerField()
+
+    # Our Conversions
+    location = models.CharField(max_length=128)
+    implants = models.TextField()
+
+    @staticmethod
+    def _create_from_esi_row(data_row, entity_external_id):
+        """
+        URL: /characters/{character_id}/clones/
+        Expects a row from `jump_clones`
+        """
+        clone = EveJumpClone(
+            location_id=data_row['location_id'],
+            location_type=data_row['location_type'],
+            jump_clone_id=data_row['jump_clone_id'],)
+
+        clone.location = resolve_location_from_location_id_location_type(
+            clone.location_id, 
+            clone.location_type,
+            entity_external_id)
+
+        implants = [] 
+        for implant in data_row['implants']:
+            implants.append(resolve_type_id_to_type_name(implant))
+        
+        clone.implants = ",".join(implants) 
+        return clone 
+
+        
+class EveContact(EveEntityData):
+    contact_types = (
+        ("character", "character"),
+        ("corporation", "corporation"),
+        ("alliance", "alliance"),
+        ("faction", "faction")
+    )
+
+    # ESI Data 
+    contact_id = models.IntegerField()
+    contact_type = models.CharField(max_length=32, choices=contact_types)
+    is_blocked = models.BooleanField(default=False)
+    is_watched = models.BooleanField(default=False) 
+    label_ids = models.TextField()
+    standing = models.FloatField()
+
+    # Our Conversions
+    contact_name = models.CharField(max_length=64)
+
+
+    @property 
+    def evewho(self):
+        return "https://%s/%s/%s" % (app_config.EVEWHO_CONFIG['domain'], 
+            self.contact_type, 
+            self.contact_id)
+    
+    @property
+    def portrait(self):
+        return "https://%s/%ss/%s" % (app_config.EVEIMG_CONFIG['domain'], 
+            self.contact_type, 
+            app_config.EVEIMG_CONFIG['portrait_mapping'][self.contact_type])
+
+    @staticmethod
+    def _create_from_esi_row(data_row, entity_external_id):
+        # Store what ESI returns 
+        contact = EveContact(
+            contact_id=data_row['contact_id'],
+            contact_type=data_row['contact_type'],
+            standing=data_row['standing']
+        )
+
+        # Handle optional ESI fields 
+        if 'is_blocked' in data_row:
+            contact.is_blocked = data_row['is_blocked'] 
+        if 'is_watched' in data_row:
+            contact.is_watched = data_row['is_watched']
+        if 'label_ids' in data_row:
+            label_ids = []
+            for label_id in data_row['label_ids']:
+                label_ids.append(label_id)
+            contact.label_ids = ",".join(label_ids)
+
+        # Use the static database to resolve ID fields 
+        contact.contact_name = resolve_id([contact.contact_id])[contact.contact_id]
+        return contact
+    
 
 """
 EVE Connector Models

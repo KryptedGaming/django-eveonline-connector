@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, TransactionTestCase
 from django.urls import reverse_lazy, reverse
 from unittest.mock import patch
 from django_eveonline_connector.models import *
@@ -286,20 +286,19 @@ class TestEveAsset(TestCase):
     
     def tearDown(self):
         self.eve_entity.delete()
+        self.eve_entity = None 
 
-    @patch('django_eveonline_connector.models.get_structure_id')
-    @patch('django_eveonline_connector.models.resolve_location_id_to_station')
+    @patch('django_eveonline_connector.models.resolve_location_from_location_id_location_type')
     @patch('django_eveonline_connector.models.resolve_type_id_to_category_name')
     @patch('django_eveonline_connector.models.resolve_type_id_to_type_name')
     @patch('django_eveonline_connector.models.resolve_type_id_to_category_id')
     @patch('django_eveonline_connector.models.resolve_type_id_to_group_id')
-    def test_eve_asset_create_from_esi_row(self, mock_resolve_type_id_to_group_id, mock_resolve_type_id_to_category_id, mock_resolve_type_id_to_type_name, mock_resolve_type_id_to_category_name, mock_resolve_location_id_to_station, mock_get_structure_id):
+    def test_eve_asset_create_from_esi_row(self, mock_resolve_type_id_to_group_id, mock_resolve_type_id_to_category_id, mock_resolve_type_id_to_type_name, mock_resolve_type_id_to_category_name, mock_resolve_location_from_location_id_location_type):
         mock_resolve_type_id_to_group_id.return_value = 0
         mock_resolve_type_id_to_category_id.return_value = 0
         mock_resolve_type_id_to_type_name.return_value = "TestTypeName"
         mock_resolve_type_id_to_category_name.return_value = "TestCategoryName"
-        mock_resolve_location_id_to_station.return_value = "Test Station - VII"
-        mock_get_structure_id.return_value = "Restricted Structure"
+        mock_resolve_location_from_location_id_location_type.return_value = "Test Station - VII"
         EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
 
         eve_asset = EveAsset.objects.all()[0]
@@ -314,7 +313,7 @@ class TestEveAsset(TestCase):
         self.assertTrue(eve_asset.category_id == mock_resolve_type_id_to_category_id.return_value)
         self.assertTrue(eve_asset.item_name == mock_resolve_type_id_to_type_name.return_value)
         self.assertTrue(eve_asset.item_type == mock_resolve_type_id_to_category_name.return_value)
-        self.assertTrue(eve_asset.location == mock_resolve_location_id_to_station.return_value)
+        self.assertTrue(eve_asset.location == mock_resolve_location_from_location_id_location_type.return_value)
         eve_asset.delete() 
         
         # remove blueprint copy
@@ -324,31 +323,11 @@ class TestEveAsset(TestCase):
         self.assertTrue(eve_asset.is_blueprint_copy == False )
         eve_asset.delete() 
 
-        # set structure location type 
-        self.esi_data_row['location_type'] = 'other'
-        EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
-        eve_asset = EveAsset.objects.all()[0]
-        self.assertTrue(eve_asset.location == mock_get_structure_id.return_value)
-        eve_asset.delete() 
-
-        # raise exception on location
-        mock_get_structure_id.return_value = None
-        mock_get_structure_id.side_effect = Exception()
-        EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
-        eve_asset = EveAsset.objects.all()[0]
-        self.assertTrue(eve_asset.location == "Unknown Location")
-        eve_asset.delete() 
-
-        # set unknown location type 
-        self.esi_data_row['location_type'] = '??'
-        EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
-        eve_asset = EveAsset.objects.all()[0]
-        self.assertTrue(eve_asset.location == "Unknown Location")
-        eve_asset.delete() 
-
         # raise large exception 
         mock_resolve_type_id_to_group_id.side_effect = Exception()
-        EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
+        with self.assertLogs('django_eveonline_connector', level='WARNING') as cm:
+            EveAsset.create_from_esi_row(self.esi_data_row, self.eve_entity.external_id)
+            self.assertTrue("Failed to create" in cm.output[0])
         self.assertTrue(EveAsset.objects.all().count() == 0)
 
         
@@ -359,3 +338,56 @@ class TestEveAsset(TestCase):
         mock_app_config.return_value.ESI_BAD_ASSET_CATEGORIES=[1,2,3]
         self.assertTrue(EveAsset.get_bad_asset_categories() == mock_app_config.return_value.ESI_BAD_ASSET_CATEGORIES)
         
+class TestEveJumpClone(TransactionTestCase):
+    eve_data_row = {
+        "implants": [1,2,3,4,5],
+        "jump_clone_id": 56565496,
+        "location_id": 1030491495855,
+        "location_type": "structure",
+        "name": ""
+        }
+    
+    def setUp(self):
+        EveEntity.objects.create(name="TEST_EJC", external_id=2)
+    
+    def tearDown(self):
+        EveEntity.objects.all().delete()
+
+    @patch('django_eveonline_connector.models.resolve_type_id_to_type_name')
+    @patch('django_eveonline_connector.models.resolve_location_from_location_id_location_type')
+    def test_create_from_esi_row(self, mock_resolve_location_from_location_id_location_type, mock_resolve_type_id_to_type_name):
+        eve_entity = EveEntity.objects.get(name="TEST_EJC")
+        mock_resolve_location_from_location_id_location_type.return_value = "My Location"
+        mock_resolve_type_id_to_type_name.return_value = "Random Implant"
+        EveJumpClone.create_from_esi_row(self.eve_data_row, eve_entity.external_id)
+
+        expected_implant_string = "a,a,a,a,a".replace("a", mock_resolve_type_id_to_type_name.return_value)
+        jump_clone = EveJumpClone.objects.all()[0]
+        self.assertTrue(jump_clone.location_id == self.eve_data_row['location_id'])
+        self.assertTrue(jump_clone.location_type == self.eve_data_row['location_type'])
+        self.assertTrue(jump_clone.jump_clone_id == self.eve_data_row['jump_clone_id'])
+        self.assertTrue(jump_clone.location == mock_resolve_location_from_location_id_location_type.return_value)
+        self.assertTrue(jump_clone.implants == expected_implant_string)
+
+# class TestEveContact(TransactionTestCase):
+#     eve_data_row = {
+#         "contact_id": 123456,
+#         "contact_type": 'character',
+#         "is_blocked": True,
+#         "is_watched": True,
+#         "label_ids": [1,2,3,4,5],
+#         "standing": -5.0,
+#         }
+
+#         eve_entity = None 
+    
+#     def setUp(self):
+#         eve_entity = EveEntity.objects.create(name="TEST_CONTACT", external_id=3)
+    
+#     def tearDown(self):
+#         self.eve_entity.delete() 
+
+#     @patch('django_eveonline_connector.models.resolve_id')
+#     def test_create_from_esi_row(self, mock_resolve_ids):
+#         mock_resolve_id.return_value = "Contact Name"
+#         EveContact.create_from_esi_row(self.eve_data_row, self.eve_entity.external_id)

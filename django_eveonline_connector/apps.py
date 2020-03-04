@@ -15,6 +15,19 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
     ESI_BAD_ASSET_CATEGORIES=[42, 43]
     required_scopes = ['publicData']
 
+    EVEWHO_CONFIG = {
+        'domain': 'evewho.com'
+    }
+
+    EVEIMG_CONFIG = {
+        'domain': 'images.evetech.net',
+        'portrait_mapping': {
+            'character': 'portrait',
+            'corporation': 'logo',
+            'alliance': 'logo',
+        }
+    }
+
     def ready(self):
         from django.db.models.signals import m2m_changed, post_save, post_delete
         from .signals import eve_token_type_scopes_updated, eve_token_type_save, eve_token_generate_default_token

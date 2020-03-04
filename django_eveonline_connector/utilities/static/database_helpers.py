@@ -1,5 +1,5 @@
 from django.db import connections
-from django_eveonline_connector.utilities.esi.universe import get_type_id, get_station_id, get_group_id, resolve_names, get_category_id
+from django_eveonline_connector.utilities.esi.universe import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -148,3 +148,16 @@ def resolve_location_id_to_station(location_id):
 
     logger.warning("Resolving location_id using ESI")
     return get_station_id(location_id)['name']
+
+def resolve_location_from_location_id_location_type(location_id, location_type):
+    location = "Unknown Location"
+    try:
+        if location_type == 'station':
+            location = resolve_location_id_to_station(location_id)
+        elif location_type == 'other':
+            location = get_structure_id(location_id, token_entity_id)
+    except Exception as e:
+        logger.warning("Failed to resolve location for asset: %s" % data_row)
+        logger.exception(e)
+
+    return location
