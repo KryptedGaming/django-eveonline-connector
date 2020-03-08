@@ -85,6 +85,23 @@ class EveClient(models.Model):
             return EveClient.get_esi_client().request(operation(**kwargs), raise_on_error=raise_exception)
 
     @staticmethod
+    def get_required_scopes(op):
+        operation = EveClient.get_esi_app().op[op]
+        # Pull the required scopes from the ESI Swagger Definition
+        required_scopes = set()
+        if operation.security:
+            for definition in operation.security:
+                if 'evesso' in definition:
+                    for scope_name in definition['evesso']:
+                        scope_creation = EveScope.objects.get_or_create(
+                            name=scope_name)
+                        scope = scope_creation[0]
+                        if scope_creation[1]:
+                            logger.error(
+                                "Encountered unknown scope '%s', please notify Krypted developers." % scope)
+                        required_scopes.add(scope)
+        return required_scopes
+    @staticmethod
     def get_instance():
         app_config = apps.get_app_config('django_eveonline_connector')
         if app_config.ESI_SECRET_KEY and app_config.ESI_CLIENT_ID and app_config.ESI_CALLBACK_URL and app_config.ESI_BASE_URL:
@@ -221,7 +238,7 @@ Entity Models
 These entity models are what all EVE Online data models are attached to.
 """
 from django_eveonline_connector.utilities.esi.universe import *
-from django_eveonline_connector.utilities.static.database_helpers import *
+from django_eveonline_connector.utilities.static.universe import *
 
 class EveEntity(models.Model):
     name = models.CharField(max_length=128)
@@ -238,6 +255,14 @@ class EveCharacter(EveEntity):
     token = models.OneToOneField(
         "EveToken", on_delete=models.SET_NULL, null=True)
 
+    @property
+    def avatar(self):
+        return "https://%s/characters/%s/%s" % (
+            app_config.EVEIMG_CONFIG['domain'],
+            self.external_id,
+            app_config.EVEIMG_CONFIG['portrait_mapping']['character'],
+        )
+
     @staticmethod
     def create_from_external_id(external_id):
         response = EveClient.call(
@@ -251,6 +276,17 @@ class EveCharacter(EveEntity):
 
         return eve_character
 
+    def update_character_corporation(self, corporation_id=None):
+        if not corporation_id:
+            response = EveClient.call('post_characters_affiliation', characters=[self.character_id])
+            corporation_id = response[0]['corporation_id']
+
+        if EveCorporation.objects.filter(external_id=corporation_id).exists():
+            self.corporation = EveCorporation.objects.get(external_id=corporation_id)
+        else:
+            self.corporation = EveCorporation.create_from_external_id(external_id=corporation_id)
+        
+        self.save() 
 
 class EveCorporation(EveEntity):
     ceo = models.OneToOneField(
@@ -330,10 +366,10 @@ class EveEntityData(models.Model):
     def create_from_esi_response(cls, data, entity_external_id, *args, **kwargs):
         """
         Pre-processes the response from an ESI Call and generated Django database objects using cls.create_from_esi_row()
-        Wrapper around self._process_esi_response, which is defined by the extending class. 
+        Wrapper around self._create_esi_response, which is defined by the extending class. 
         """
         try:
-            processed_data = cls._process_esi_response(data, *args, **kwargs)
+            processed_data = cls._create_from_esi_response(data, entity_external_id, *args, **kwargs)
         except Exception as e:
             logger.warning(
                 "Failed to process ESI response for %s. Data: %s" % (cls.__name__, data))
@@ -365,7 +401,10 @@ class EveAsset(EveEntityData):
     # Our Conversions
     item_name = models.CharField(max_length=128)  # typeName
     item_type = models.CharField(max_length=32)  # categoryName
-    location = models.CharField(max_length=128)
+    location_name = models.CharField(max_length=128)
+
+    def __str__(self):
+        return "<%s :: %s - %s>" % (self.entity, self.item_name, self.location_name)
 
     @staticmethod
     def get_bad_asset_category_ids():
@@ -378,7 +417,7 @@ class EveAsset(EveEntityData):
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
         for row in data:
-            EveAsset.create_from_esi_row(row)
+            EveAsset.create_from_esi_row(row, entity_external_id)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -407,7 +446,7 @@ class EveAsset(EveEntityData):
         asset.item_type = resolve_type_id_to_category_name(asset.type_id)
 
         # Location IDs suck to resolve, we must do different things for each type
-        asset.location = resolve_location_from_location_id_location_type(
+        asset.location_name = resolve_location_from_location_id_location_type(
             asset.location_id,
             asset.location_type,
             entity_external_id)

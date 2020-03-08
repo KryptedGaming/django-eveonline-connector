@@ -1,0 +1,325 @@
+from django.shortcuts import render, redirect
+from django.db.models import Q
+from django.contrib import messages
+from django.http import HttpResponse
+from django.views.generic import TemplateView
+from django_eveonline_connector.models import EveCharacter, EveEntity
+from django_eveonline_connector.models import EveAsset, EveJumpClone, EveContact, EveContract, EveSkill, EveJournalEntry, EveTransaction
+from django_datatables_view.base_datatable_view import BaseDatatableView
+from django.contrib.auth.decorators import login_required, permission_required
+from django.utils.html import escape
+
+@login_required
+@permission_required('django_eveonline_connector.view_eveasset', raise_exception=True)
+def get_assets(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return AssetJson.as_view()(request)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_eveclone', raise_exception=True)
+def get_clones(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return CloneJson.as_view()(request)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evecontact', raise_exception=True)
+def get_contacts(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return ContactJson.as_view()(request)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evecontract', raise_exception=True)
+def get_contracts(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return ContractJson.as_view()(request)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evejournalentry', raise_exception=True)
+def get_journal(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return JournalJson.as_view()(request)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evetransaction', raise_exception=True)
+def get_transactions(request):
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    if not EveEntity.objects.filter(external_id=request.GET.get('external_id')):
+        return HttpResponse(status=404)
+    return TransactionJson.as_view()(request)
+
+
+# JSON Class Views
+class AssetJson(BaseDatatableView):
+    model = EveAsset
+    columns = ['item', 'location_name', 'quantity']
+    order_columns = ['item', 'location_name', 'quantity']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(item__istartswith=search)
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        for item in qs:
+            json_data.append([
+                item.item_name,
+                item.location_name,
+                item.quantity,
+            ])
+        return json_data
+
+
+class CloneJson(BaseDatatableView):
+    model = EveJumpClone
+    columns = ['location', 'implants']
+    order_columns = ['location', 'implants']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(Q(location__istartswith=search)
+                           | Q(implants__contains=search))
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        for item in qs:
+            json_data.append([
+                item.location,
+                item.implants.replace(",", "<br>"),
+            ])
+        return json_data
+
+
+class ContactJson(BaseDatatableView):
+    model = EveContact
+    columns = ['name', 'contact_type', 'standing']
+    order_columns = ['name', 'contact_type', 'standing']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(Q(name__istartswith=search))
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        for item in qs:
+            json_data.append([
+                item.name,
+                item.contact_type,
+                item.standing
+            ])
+        return json_data
+
+
+class ContractJson(BaseDatatableView):
+    model = EveContract
+    columns = ['date_created', 'contract_status',
+               'contract_type', 'issued_by', 'issued_to', 'contract_items']
+    order_columns = ['date_created', 'contract_status',
+                     'contract_type', 'issued_by', 'issued_to', 'contract_items']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(Q(issued_by__istartswith=search) |
+                           Q(issued_to__istartswith=search) |
+                           Q(accepted_by__istartswith=search)
+                           )
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        for contract in qs:
+            date_created = contract.date_created
+            contract_status = contract.contract_status
+            contract_type = contract.contract_type
+            from_who = contract.issued_by
+            if contract.accepted_by:
+                to_who = contract.accepted_by
+            elif contract.issued_to:
+                to_who = contract.issued_to
+            else:
+                to_who = "Public"
+            actions = """
+                <button class="text-center btn btn-success" data-toggle="modal" data-target="#view_%s"><i class="fa fa-eye"></i></button>
+                <div class="modal fade col-md-12" id="view_%s" data-backdrop="false">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h4>View Contract</h4>
+                            </div>
+                            <div class="modal-body">
+                               <p>%s</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            """ % (contract.pk, contract.pk, contract.contract_items.replace("\n", "<br>"))
+
+            json_data.append([
+                date_created.strftime("%m-%d-%Y"),
+                contract_status,
+                contract_type.replace("_", " ").upper(),
+                from_who,
+                to_who,
+                actions
+            ])
+        return json_data
+
+
+class JournalJson(BaseDatatableView):
+    model = EveJournalEntry
+    columns = ['date', 'type', 'first_party', 'second_party', 'value']
+    order_columns = ['date', 'type', 'first_party', 'second_party', 'value']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(Q(type__istartswith=search) |
+                           Q(first_party__istartswith=search) |
+                           Q(second_party__istartswith=search))
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        # resolve custom template responses
+        for entry in qs:
+            first_party_ext = "jpg"
+            second_party_ext = "jpg"
+            if entry.first_party_type == "corporation":
+                first_party_ext = "png"
+            if entry.second_party_type == "corporation":
+                second_party_ext = "png"
+            # add avatars for first party field
+            if entry.first_party_type == "corporation" or entry.first_party_type == "character":
+                entry_first_party = """
+                <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
+                %s 
+                """ % (entry.first_party_type.title(), entry.first_party_id, first_party_ext, entry.first_party)
+            else:
+                entry_first_party = entry.type
+            # add avatars for second party field
+            if entry.second_party_type == "corporation" or entry.second_party_type == "character":
+                entry_second_party = """
+                <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
+                %s 
+                """ % (entry.second_party_type.title(), entry.second_party_id, second_party_ext, entry.second_party)
+            else:
+                entry.second_party = entry.type
+            # clean up value html
+            if entry.value < 0:
+                amount_color = "red"
+            else:
+                amount_color = "green"
+            entry_amount = """
+                <p><span style="color: %s">%s</span></p>
+            """ % (amount_color, f'{entry.value:,}')
+
+            json_data.append([
+                entry.date.strftime("%m-%d-%Y"),
+                entry.type.title(),
+                entry_first_party,
+                entry_second_party,
+                entry_amount,
+            ])
+
+        return json_data
+
+
+class TransactionJson(BaseDatatableView):
+    model = EveTransaction
+    columns = ['client_name', 'item', 'quantity', 'value']
+    order_columns = ['client_name', 'item', 'quantity', 'value']
+
+    def filter_queryset(self, qs):
+        # implement searching
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            qs = qs.filter(Q(item__istartswith=search) |
+                           Q(client__istartswith=search)
+                           )
+
+        # return character
+        external_id = self.request.GET.get('external_id')
+        return qs.filter(Q(entity__external_id=external_id))
+
+    def prepare_results(self, qs):
+        json_data = []
+        # resolve custom template responses
+        for transaction in qs:
+            client_ext = "jpg"
+            if transaction.client_type == "corporation":
+                client_ext = "png"
+            # add avatars for client
+            if transaction.client_type.upper() == "corporation" or transaction.client_type.upper() == "character":
+                transaction_client = """
+                <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
+                %s 
+                """ % (transaction.client_type.title(), transaction.client_id, client_ext, transaction.client)
+            else:
+                transaction_client = transaction.client_type
+            # clean up value html
+            if transaction.is_buy:
+                amount_color = "red"
+            else:
+                amount_color = "green"
+            transaction_amount = """
+                <p><span style="color: %s">%s</span></p>
+            """ % (amount_color, f'{transaction.value:,}')
+
+            json_data.append([
+                transaction_client,
+                transaction.item,
+                transaction.quantity,
+                transaction_amount,
+            ])
+
+        return json_data

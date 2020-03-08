@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+EVE Online - Select Token Type
+{% endblock %}
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    {% block header %}
+    EVE Online
+    {% endblock %}
+
+    {% block description %}
+    Select Primary Character
+    {% endblock %}
+
+    <!-- Main content -->
+    {% block content %}
+
+    <div class="box box-primary box-solid">
+        <div class="box-header">
+            <h1 class="box-title">Available Characters</h1>
+        </div>
+        <div class="box-body">
+            <table class="datatable table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Character</th>
+                        <th>Corporation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for character in characters %}
+                    <tr>
+                        <td>{{character.name}}</td>
+                        <td>{{character.corporation}}</td>
+                        <td><a href="{% url 'django-eveonline-connector-character-set-primary' character.external_id %}"
+                                class="btn btn-success btn-block">Select Character</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endblock %}
+    <!-- /.content -->
+</div>
+
+{% block scripts %}
+<script>
+    $(function () {
+        $('table').DataTable({
+            'paging': false,
+            'lengthChange': false,
+            'searching': false,
+            'ordering': false,
+            'info': false,
+            'autoWidth': false
+        })
+    })
+</script>
+{% endblock %}

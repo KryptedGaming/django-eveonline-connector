@@ -1,31 +1,42 @@
 from django.db import connections
 from django_eveonline_connector.utilities.esi.universe import *
+from django.db.utils import ConnectionDoesNotExist, OperationalError
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 def resolve_type_id_to_type_name(type_id):
-    from django.db.utils import ConnectionDoesNotExist
     from django_eveonline_connector.utilities.esi.universe import get_type_id
+    type_name = None
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(
                 "select typeName from invTypes where typeID = %s" % type_id)
             row = str(cursor.fetchone()[0])
-        return row
+        return row 
     except ConnectionDoesNotExist as e:
+        logger.warning("EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
-        logger.error(
-            "Error resolving EVE type_id(%s) to type_name: %s" % (type_id, e))
+        logger.exception(e)
 
-    logger.warning("Resolving type_id using ESI")
-    return get_type_id(type_id)['name']
+    logger.warning("Resolving type_id (%s) using ESI" % type_id)
+    response = get_type_id(type_id)
+    
+    if 'name' in response:
+        type_name=response['name']
+    
+    if not type_name:
+        logger.error("Failed to resolve type_id (%s) to type_name" % type_id)
+    
+    return type_name
 
 def resolve_type_name_to_type_id(type_name):
-    from django.db.utils import ConnectionDoesNotExist
     from django_eveonline_connector.utilities.esi.universe import resolve_names
     try:
         with connections['eve_static'].cursor() as cursor:
@@ -36,16 +47,23 @@ def resolve_type_name_to_type_id(type_name):
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
-        logger.error(
-            "Error resolving EVE type_name(%s) to type_id: %s" % (type_name, e))
+        logger.exception(e)
+        
 
     logger.warning("Resolving type_name using ESI")
-    return resolve_names(type_name)['inventory_types'][0]['id']
-
+    type_id = resolve_names(type_name)['inventory_types'][0]['id']
+    if not type_id:
+        logger.error(
+            "Error resolving EVE type_name(%s) to type_id" % type_name)
+    return type_id
 
 def resolve_type_id_to_group_id(type_id):
-    from django.db.utils import ConnectionDoesNotExist
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(
@@ -55,21 +73,29 @@ def resolve_type_id_to_group_id(type_id):
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
-        logger.error(
-            "Error resolving EVE type_id(%s) to group_id: %s" % (type_id, e))
+        logger.exception(e)
+        
     logger.warning("Resolving group_id using ESI")
-    return get_type_id(type_id)['group_id']
+
+    group_id = get_type_id(type_id)['group_id']
+    if not group_id:
+        logger.error("Error resolving EVE type_id(%s) to group_id" % type_id)
+    return group_id 
 
 def resolve_type_id_to_category_name(type_id):
-    try:
-        category_id = resolve_type_id_to_category_id(type_id)
-    except Exception as e:
-        logger.error("Failed to resolve %s. \n%s" % (type_id, e))
-        return "Unknown Category"
+    category_id = resolve_type_id_to_category_id(type_id)
+    category_name = resolve_category_id_to_category_name(category_id)
+    if not category_name:
+        logger.error("Failed to resolve type_id(%s) to category name" % type_id)
+    return category_name
 
 def resolve_group_id_to_group_name(group_id):
-    from django.db.utils import ConnectionDoesNotExist
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(
@@ -79,11 +105,20 @@ def resolve_group_id_to_group_name(group_id):
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
         logger.error(
             "Error resolving EVE type_id(%s) to group_id: %s" % (group_id, e))
+
     logger.warning("Resolving group_id using ESI")
-    return get_group_id(group_id)['name']
+    group_name = get_group_id(group_id)['name']
+    if not group_name:
+        logger.error("Error resolving EVE type_id(%s) to group_id" % group_id)
+    return group_name 
 
 
 def resolve_type_id_to_group_name(type_id):
@@ -92,7 +127,6 @@ def resolve_type_id_to_group_name(type_id):
 
 
 def resolve_group_id_to_category_id(group_id):
-    from django.db.utils import ConnectionDoesNotExist
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(
@@ -102,6 +136,11 @@ def resolve_group_id_to_category_id(group_id):
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
         logger.error(
             "Error resolving EVE group_id(%s) to category_id: %s" % (group_id, e))
@@ -109,7 +148,6 @@ def resolve_group_id_to_category_id(group_id):
     return get_group_id(group_id)['category_id']
 
 def resolve_category_id_to_category_name(category_id):
-    from django.db.utils import ConnectionDoesNotExist
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(
@@ -119,6 +157,11 @@ def resolve_category_id_to_category_name(category_id):
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
+        raise(e)
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+        raise(e)
     except Exception as e:
         logger.error(
             "Error resolving EVE category_id(%s) to category_name: %s" % (category_id, e))
@@ -133,7 +176,6 @@ def resolve_type_id_to_category_id(type_id):
 
 
 def resolve_location_id_to_station(location_id):
-    from django.db.utils import ConnectionDoesNotExist
     try:
         with connections['eve_static'].cursor() as cursor:
             query = "select stationName from staStations where stationID = %s" % location_id
@@ -141,15 +183,18 @@ def resolve_location_id_to_station(location_id):
             row = str(cursor.fetchone()[0])
         return row
     except ConnectionDoesNotExist as e:
-        logger.error(
-            "EVE static database is not installed: massively slows down your tasks")
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
+    except OperationalError as e:
+        logger.warning(
+            "EVE static database is not installed: this slows down your tasks")
     except Exception as e:
         logger.error(e)
 
     logger.warning("Resolving location_id using ESI")
     return get_station_id(location_id)['name']
 
-def resolve_location_from_location_id_location_type(location_id, location_type):
+def resolve_location_from_location_id_location_type(location_id, location_type, token_entity_id):
     location = "Unknown Location"
     try:
         if location_type == 'station':

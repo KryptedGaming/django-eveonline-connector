@@ -1,0 +1,45 @@
+{% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
+
+{% block header %}
+Clones
+{% endblock %}
+
+{% block description %}
+{{character.name}}
+{% endblock %}
+
+{% block tab_content %}
+<table class="datatable table table-bordered table-hover text-center">
+    <thead>
+        <th class="col-lg-4 col-md-4 col-xs-2">Location</th>
+        <th class="col-lg-4 col-md-4 col-xs-2">Implants</th>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+            'serverSide': true,
+            "ajax": "{% url 'django-eveonline-connector-api-clones' %}?external_id={{character.external_id}}"
+        })
+    })
+</script>
+<script>
+    $(document).ready(function () {
+        $('#clones').addClass('active');
+    });
+</script>
+
+{% endblock %}

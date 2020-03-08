@@ -1,0 +1,212 @@
+{% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
+
+{% block header %}
+Skills
+{% endblock %}
+
+{% block description %}
+{{character.name}}
+{% endblock %}
+
+{% block head %}
+<style>
+    .rating {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 4px;
+        background: #fff;
+        border: 1px solid #424242;
+        margin: 0 0.5rem;
+    }
+
+    .rating::after {
+        content: "\00a0";
+    }
+
+    .ratingOn {
+        background: #424242;
+    }
+</style>
+{% endblock %}
+{% block tab_content %}
+<div class="box-content">
+
+    <div>
+        <div class="dropdown pull-left">
+            <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu" data-toggle="dropdown"
+                aria-haspopup="true" aria-expanded="true">
+                Select Skill Category
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenu">
+                {% for group in groups %}
+                <li><a href="#" data-value="{{group | cut:' ' | lower}}">{{group}}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <button type="button" class="btn btn-warning pull-right" data-toggle="modal" data-target="#modal-default">
+            <i class="fa fa-clipboard"></i> Check Skills
+        </button>
+
+        <div class="modal fade" id="modal-default" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span></button>
+                        <h4 class="modal-title">Paste Skills</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <textarea class="form-control" id="exampleFormControlTextarea1" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+                        <button id="checkSkillButton" type="button" class="btn btn-primary">Check Skills</button>
+                    </div>
+                </div>
+                <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+        </div>
+    </div>
+
+    <br>
+
+    <div class="tab-content">
+        <br>
+        {% for group in groups %}
+        <div class="skill-pane tab-pane" id="{{group | cut:' ' | lower}}">
+            <table class="datatable table table-bordered table-hover text-center">
+                <thead>
+                    <th class="col-lg-2 col-md-2 col-xs-1">Skill</th>
+                    <th class="col-lg-2 col-md-2 col-xs-1">Level</th>
+                </thead>
+                <tbody>
+                    {% for skill in skills %}
+                    {% if skill.group == group %}
+                    <tr>
+                        <td>{{skill.name}}</td>
+                        <td>
+                            {% if skill.level == 0 %}
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            {% elif skill.level == 1 %}
+                            <div class="rating ratingOn"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            {% elif skill.level == 2 %}
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            {% elif skill.level == 3 %}
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating"></div>
+                            <div class="rating"></div>
+                            {% elif skill.level == 4 %}
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating"></div>
+                            {% elif skill.level == 5 %}
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            <div class="rating ratingOn"></div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+    <br>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#skills').addClass('active');
+    });
+</script>
+
+<script>
+    skill_names_string = "{{ skill_names }}"
+    skill_levels_string = "{{ skill_levels }}"
+    skill_names = skill_names_string.split(",")
+    skill_levels = skill_levels_string.split(",")
+
+    skill_lookup = [];
+    for (i = 0; i < skill_names.length; i++) {
+        skill_lookup.push("" + skill_names[i] + " " + skill_levels[i])
+    }
+
+    function checkSkills(skills_to_match) {
+        skills_to_match = skills_to_match.split("\n")
+        for (skill_to_check of skills_to_match) {
+            skill_name = skill_to_check.slice(0, skill_to_check.length - 2)
+            skill_level = skill_to_check.slice(skill_to_check.length - 2, skill_to_check.length).trim()
+            switch (skill_level) {
+                case "I":
+                    skill_level = 1
+                    break;
+                case "II":
+                    skill_level = 2
+                    break;
+                case "III":
+                    skill_level = 3
+                    break;
+                case "IV":
+                    skill_level = 4
+                    break;
+                case "V":
+                    skill_level = 5
+                    break;
+            }
+            index_of_skill = skill_names.indexOf(skill_name)
+            if (skill_levels[index_of_skill] < skill_level) {
+                return false
+            }
+        }
+        return true
+    }
+</script>
+
+<script>
+    $(".dropdown-menu li a").click(function () {
+        $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
+        $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
+        $('.skill-pane').hide();
+        $('#' + $(this).data('value')).show();
+    });
+
+    $("#checkSkillButton").click(function () {
+        if (checkSkills($("textarea").val())) {
+            alert("Skill test passed")
+        }
+        else {
+            alert("Skill test failed")
+        }
+    });
+</script>
+
+{% endblock %}

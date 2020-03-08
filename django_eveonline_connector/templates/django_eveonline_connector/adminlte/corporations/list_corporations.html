@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+EVE Online - Corporations
+{% endblock %}
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    {% block header %}
+    EVE Online
+    {% endblock %}
+
+    {% block description %}
+    View Corporations
+    {% endblock %}
+
+    <!-- Main content -->
+    {% block content %}
+    
+    <div class="box box-primary">
+    <div class="box-body">
+    <table class="datatable table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Corporation</th>
+                <th>Alliance</th>
+                <th>CEO</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for corporation in corporations %}
+            <tr>
+                <td>
+                    {{corporation.name}}
+                </td>
+
+                <td>
+                    {{corporation.alliance}}
+                </td>
+
+                <td>
+                    {{corporation.ceo}}
+                </td>
+
+            </tr>
+            {% endfor %}
+            <!-- Bottom Divider -->
+            
+        </tbody>
+    </table>
+    </div>
+    </div>
+    {% endblock %}
+    <!-- /.content -->
+</div>
+
+{% block scripts %}
+<script>
+$(function () {
+    $('table').DataTable({
+      'paging'      : false,
+      'lengthChange': false,
+      'searching'   : true,
+      'ordering'    : true,
+      'info'        : true,
+      'autoWidth'   : false
+    })
+ })
+</script>
+{% endblock %}

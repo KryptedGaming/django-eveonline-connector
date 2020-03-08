@@ -9,11 +9,11 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-eveonline-connector',
-    version='1.0.2',
+    version='1.1.0',
     packages=find_packages(),
     include_package_data=True,
     license='MIT License',
-    description='A simple Django application that adds EVE Online entities and SSO methods',
+    description='EVE Online integration for SSO, characters, corporations, alliances, and their respective data.',
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/KryptedGaming/django-eveonline-connector',
@@ -32,7 +32,8 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
     install_requires=[
-        'esipy',
-        'celery'
+        'esipy==1.0.0',
+        'celery>=4.3.0',
+        'django_datatables_view==1.19.1',
     ]
 )

@@ -1,0 +1,48 @@
+{% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
+
+{% block header %}
+Journal
+{% endblock %}
+
+{% block description %}
+{{character.name}}
+{% endblock %}
+
+{% block tab_content %}
+<table class="datatable table table-bordered table-hover text-center">
+    <thead>
+        <th class="col-lg-2 col-md-2 col-xs-1">Date</th>
+        <th class="col-lg-2 col-md-2 col-xs-1">Type</th>
+        <th class="col-lg-2 col-md-2 col-xs-1">First Party</th>
+        <th class="col-lg-3 col-md-3 col-xs-1">Second Party</th>
+        <th class="col-lg-3 col-md-3 col-xs-1">Amount</th>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+            'serverSide': true,
+            "ajax": "{% url 'django-eveonline-connector-api-journal' %}?external_id={{character.external_id}}"
+        })
+    })
+</script>
+<script>
+    $(document).ready(function () {
+        $('#journal').addClass('active');
+    });
+</script>
+
+{% endblock %}

@@ -46,7 +46,12 @@ def resolve_ids_with_types(ids):
 
 
 def get_type_id(type_id):
-    return EveClient.call('get_universe_types_type_id', type_id=type_id).data
+    try:
+        response = EveClient.call('get_universe_types_type_id', type_id=type_id, raise_exception=True)
+        return response.data
+    except Exception as e:
+        logger.exception(e)
+        return None 
 
 
 def get_station_id(station_id):
