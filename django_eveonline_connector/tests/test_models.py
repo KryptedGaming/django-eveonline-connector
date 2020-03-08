@@ -11,6 +11,29 @@ import django_eveonline_connector
 from django.core.cache import cache
 import uuid
 
+# MOCK HELPERS 
+
+
+class MockObject():
+    pass
+
+
+def mock_eve_client_call_character_public_data(*args, **kwargs):
+    obj = MockObject()
+    obj.data = {
+        'name': 'BearThatCares'
+    }
+    return obj
+
+
+def mock_eve_client_call_corporation_public_data(*args, **kwargs):
+    obj = MockObject()
+    obj.data = {
+        'name': 'Doomheim',
+        'ticker': 'HELL'
+    }
+    return obj
+
 # ESI
 class TestEveClient(TestCase):
     eve_client = None 
@@ -141,7 +164,7 @@ class TestEveClient(TestCase):
 
 # SSO
 class TestEveTokenType(TestCase):
-    eve_token_type = EveTokenType.objects.all()[0]
+    eve_token_type = None
     
     def setUp(self):
         self.eve_client = EveClient.objects.create(esi_callback_url="TEST", 
@@ -245,15 +268,16 @@ class TestEveEntity(TestCase):
         self.assertTrue(ee.__str__() == ee.name)
         ee.delete()
 
+
 class TestEveCharacter(TestCase):
-    # TODO: leaving as a sanity check that EveClient.call works.. find better way
+    @patch.object(django_eveonline_connector.models.EveClient, 'call', mock_eve_client_call_character_public_data)
     def test_eve_character_create_from_external_id(self):
         ec = EveCharacter.create_from_external_id(634915984)
         self.assertTrue(ec.name == "BearThatCares")
         self.assertTrue(ec.external_id == 634915984)
 
 class TestEveCorporation(TestCase):
-    # TODO: leaving as a sanity check that EveClient.call works.. find better way
+    @patch.object(django_eveonline_connector.models.EveClient, 'call', mock_eve_client_call_corporation_public_data)
     def test_eve_corporation_create_from_external_id(self):
         ec = EveCorporation.create_from_external_id(1000001)
         self.assertTrue(ec.name == "Doomheim")
@@ -331,12 +355,8 @@ class TestEveAsset(TestCase):
         self.assertTrue(EveAsset.objects.all().count() == 0)
 
         
-    @patch('django.apps.apps.get_app_config')
-    def test_eve_asset_get_bad_asset_categories(self, mock_app_config):
-        mock_app_config.return_value = AppConfig(app_name='django_eveonline_connector', 
-            app_module=django_eveonline_connector)
-        mock_app_config.return_value.ESI_BAD_ASSET_CATEGORIES=[1,2,3]
-        self.assertTrue(EveAsset.get_bad_asset_categories() == mock_app_config.return_value.ESI_BAD_ASSET_CATEGORIES)
+    def test_eve_asset_get_bad_asset_category_ids(self):
+        self.assertTrue(EveAsset.get_bad_asset_category_ids() == [42, 43])
         
 class TestEveJumpClone(TransactionTestCase):
     eve_data_row = {
