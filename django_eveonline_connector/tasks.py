@@ -68,19 +68,23 @@ def update_alliances():
 """
 Character tasks 
 """
-@shared_task
-def update_character_assets(*args, **kwargs):
+def update_character_eveentitydata(op, *args, delete=True, **kwargs):
     """
-    Updates all character assets from ESI.
-    Highly recommended to not use this frequently, unless you absolutely need it.
+    Helper method for update_character_??? tasks.
+    They basically all follow the same behavior. 
     """
-    op = 'get_characters_character_id_assets'
+    if 'data_model' not in kwargs:
+        raise Exception("Must pass an EveEntityData model")
+
+    data_model = kwargs.get('data_model')
+
     if 'character_id' in kwargs:
         characters = EveCharacter.objects.filter(
             external_id=kwargs.get('character_id'))
     else:
-        characters = [] 
-        tokens = EveToken.objects.filter(scopes__in=EveClient.get_required_scopes(op))
+        characters = []
+        tokens = EveToken.objects.filter(
+            scopes__in=EveClient.get_required_scopes(op))
         for token in tokens:
             characters.append(token.evecharacter)
 
@@ -90,38 +94,62 @@ def update_character_assets(*args, **kwargs):
         except Exception as e:
             logger.exception(e)
             continue
-    
+
         if response.status != 200:
             logger.error(response)
-            continue 
-            
-        assets = response.data 
-        EveAsset.objects.filter(entity=character).delete()
-        EveAsset.create_from_esi_response(assets, character.external_id)
+            continue
+
+        items = response.data
+        if delete:
+            data_model.objects.filter(entity=character).delete()
+        data_model.create_from_esi_response(items, character.external_id)
+
+@shared_task
+def update_character_assets(*args, **kwargs):
+    """
+    Updates all character assets from ESI.
+    Highly recommended to not use this frequently, unless you absolutely need it.
+    """
+    op = 'get_characters_character_id_assets'
+    data_model = EveAsset 
+    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
 
 @shared_task
 def update_character_jumpclones(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_clones'
+    data_model = EveJumpClone
+    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
 
 @shared_task 
 def update_character_contacts(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_contacts'
+    data_model = EveContact
+    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
 
 @shared_task
 def update_character_contracts(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_contracts'
+    data_model = EveContract
+    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
+
 
 @shared_task
 def update_character_skills(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_skills'
+    data_model = EveSkill
+    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
 
 @shared_task
 def update_character_journals(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_wallet_journal'
+    data_model = EveJournalEntry
+    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
 
 @shared_task
 def update_character_transactions(*args, **kwargs):
-    pass 
+    op = 'get_characters_character_id_wallet_transactions'
+    data_model = EveTransaction
+    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
 
 """
 Helper Tasks

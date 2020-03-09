@@ -3,6 +3,7 @@ from esipy import EsiClient, EsiSecurity, EsiApp
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.utils.dateparse import parse_datetime
 from django.apps import apps
 import datetime
 import logging
@@ -465,9 +466,9 @@ class EveJumpClone(EveEntityData):
     implants = models.TextField()
 
     @staticmethod
-    def _process_esi_response(data, *args, **kwargs):
-        for row in data:
-            EveJumpClone.create_from_esi_row(row)
+    def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
+        for row in data['jump_clones']:
+            EveJumpClone.create_from_esi_row(row, entity_external_id)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -498,7 +499,7 @@ class EveContact(EveEntityData):
     contact_id = models.IntegerField()
     is_blocked = models.BooleanField(default=False)
     is_watched = models.BooleanField(default=False)
-    label_ids = models.TextField()
+    label_ids = models.TextField(blank=True, null=True)
     standing = models.FloatField()
 
     # Our Conversions
@@ -519,11 +520,13 @@ class EveContact(EveEntityData):
 
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
+        if len(data) == 0:
+            return # no contacts
         # process user ids
         contact_ids_to_resolve = set()
         for contact in data:
             contact_ids_to_resolve.add(contact['contact_id'])
-        contact_names = resolve_ids(contact_ids_to_resolve)
+        contact_names = resolve_ids(list(contact_ids_to_resolve))
         for row in data:
             EveContact.create_from_esi_row(
                 row, entity_external_id, contact_name=contact_names[row['contact_id']])
@@ -543,17 +546,18 @@ class EveContact(EveEntityData):
         if 'label_ids' in data_row:
             label_ids = []
             for label_id in data_row['label_ids']:
-                label_ids.append(label_id)
-            contact.label_ids = ",".join(label_ids)
+                label_ids.append(str(label_id))
+            if len(label_ids) >= 1:
+                contact.label_ids = ",".join(label_ids)
 
         # Our Conversions
         if 'contact_name' not in kwargs:
             logger.warning(
                 "Called without contact_name keyword argument. Performance decrease.")
-            contact.contact_name = resolve_id([contact.contact_id])[
+            contact.contact_name = resolve_ids([ data_row['contact_id'] ])[
                 contact.contact_id]
         else:
-            contact.contact_name = contact_name
+            contact.contact_name = kwargs.get('contact_name')
         return contact
 
 
@@ -604,18 +608,19 @@ class EveContract(EveEntityData):
             ids_to_resolve.add(contract['assignee_id'])
             ids_to_resolve.add(contract['issuer_id'])
             ids_to_resolve.add(contract['issuer_corporation_id'])
-        resolved_ids = resolve_ids(ids_to_resolve)
+        resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
             if 'for_corporation' in row and row['for_corporation']:
                 corporation = EveCorporation.objects.filter(
                     external_id=row['issuer_corporation_id']).exclude(ceo=None).first()
                 if corporation:
+                    token = corporation.ceo.token
                     EveContract.create_from_esi_row(
                         row, corporation.external_id, token=token, corporation=True)
         else:
             EveContract.create_from_esi_row(
-                row, entity_external_id, resolved_ids=resolved_ids, token=token, corporation=False)
+                row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -669,7 +674,7 @@ class EveContract(EveEntityData):
                 "Resolved IDs were not passed. Performance decrease.")
             ids_to_resolve = [contract.acceptor_id, contract.assignee_id,
                               contract.issuer_id, contract.issuer_corporation_id]
-            resolved_ids = resolve_ids(ids_to_resolve)
+            resolved_ids = resolve_ids_with_types(ids_to_resolve)
             # todo resolve IDs
         else:
             resolved_ids = kwargs.get('resolved_ids')
@@ -677,24 +682,24 @@ class EveContract(EveEntityData):
         if 'corporation' in kwargs and kwargs.get('corporation'):
             contracts_response = EveClient.call(
                 'get_corporations_corporation_id_contracts_contract_id_items', token,
-                corporation_id=entity_external_id, contract_id=contract_id)
+                corporation_id=entity_external_id, contract_id=contract.contract_id)
         else:
             contracts_response = EveClient.call(
-                'get_characters_character_id_contracts_contract_id_items', token,
-                character_id=entity_external_id, contract_id=contract_id)
+                'get_characters_character_id_contracts_contract_id_items',
+                character_id=entity_external_id, contract_id=contract.contract_id)
 
         items = []
-        for item in contracts_response:
+        for item in contracts_response.data:
             items.append("%s %s" % (
                 item['quantity'], resolve_type_id_to_type_name(item['type_id'])))
         contract.items = "\n".join(items)
 
         contract.acceptor_name = resolved_ids[contract.acceptor_id]['name']
-        contract.assignee_name = resolved_ids[contract.assignee_name]['name']
-        contract.issuer_name = resolved_ids[contract.issuer_name]['name']
+        contract.assignee_name = resolved_ids[contract.assignee_id]['name']
+        contract.issuer_name = resolved_ids[contract.issuer_id]['name']
         contract.acceptor_type = resolved_ids[contract.acceptor_id]['type']
-        contract.assignee_type = resolved_ids[contract.assignee_name]['type']
-        contract.issuer_type = resolved_ids[contract.issuer_name]['type']
+        contract.assignee_type = resolved_ids[contract.assignee_id]['type']
+        contract.issuer_type = resolved_ids[contract.issuer_id]['type']
         contract.issuer_corporation_name = resolved_ids[contract.issuer_corporation_id]
 
         return contract
@@ -762,7 +767,7 @@ class EveJournalEntry(EveEntityData):
         for row in data:
             ids_to_resolve.add(row['first_party_id'])
             ids_to_resolve.add(row['second_party_id'])
-        resolved_ids = resolve_ids(ids_to_resolve)
+        resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
             EveJournalEntry.create_from_esi_row(
@@ -790,7 +795,7 @@ class EveJournalEntry(EveEntityData):
             logger.warning(
                 "Called without Resolved IDs. Performance decrease.")
             ids_to_resolve = [entry.first_party_id, entry.second_party_id]
-            resolved_ids = resolve_ids(ids_to_resolve)
+            resolved_ids = resolved_ids_with_types(ids_to_resolve)
         else:
             resolved_ids = kwargs.get('resolved_ids')
 
@@ -832,9 +837,11 @@ class EveTransaction(EveEntityData):
         ids_to_resolve = set()
         for row in data:
             ids_to_resolve.add(row['client_id'])
-        resolved_ids = resolve_ids(ids_to_resolve)
+        resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
+            if EveTransaction.objects.filter(transaction_id=row['transaction_id']):
+                continue
             EveTransaction.create_from_esi_row(
                 row, entity_external_id, resolved_ids=resolved_ids)
 
@@ -857,21 +864,24 @@ class EveTransaction(EveEntityData):
             logger.warning(
                 "Called without Resolved IDs. Performance decrease.")
             ids_to_resolve = [transaction.client_id]
-            resolved_ids = resolve_ids(ids_to_resolve)
+            resolved_ids = resolved_ids_with_types(ids_to_resolve)
         else:
             resolved_ids = kwargs.get('resolved_ids')
 
-        transaction.client_name = resolved_ids[transcation.client_id]['name']
+        transaction.client_name = resolved_ids[transaction.client_id]['name']
         transaction.client_type = resolved_ids[transaction.client_id]['type']
         transaction.type_name = resolve_type_id_to_type_name(
             transaction.type_id)
 
-        if resolve_location_from_location_id_location_type(location_id, 'station') == 'Unknown Location':
+        if resolve_location_from_location_id_location_type(transaction.location_id, 'station', entity_external_id) == 'Unknown Location':
             transaction.location_name = resolve_location_from_location_id_location_type(
-                location_id, 'other', entity_external_id)
+                transaction.location_id, 'other', entity_external_id)
         else:
             transaction.location_name = resolve_location_from_location_id_location_type(
-                location_id, 'station', entity_external_id)
+                transaction.location_id, 'station', entity_external_id)
+        
+        if not transaction.location_name:
+            transaction.location_name = "Unknown Location"
 
         return transaction
 

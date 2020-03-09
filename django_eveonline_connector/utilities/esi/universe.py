@@ -4,17 +4,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-def resolve_id(id):
-    resolved_ids = EveClient.call('post_universe_names', ids=[id]).data 
-    response = {}
-    for resolved_id in resolved_ids:
-        external_id = resolved_id['id']
-        external_name = resolved_id['name']
-        if external_id not in response:
-            response[external_id] = external_name
-    return response
-
 def resolve_ids(ids):
     resolved_ids = EveClient.call('post_universe_names', ids=ids).data 
     response = {}
@@ -75,8 +64,9 @@ def get_structure_id(structure_id, token_entity_id):
         return cache.get(str(structure_id))
 
     try:
-        EveToken.objects.get(evecharacter__external_id=token_entity_id)
+        token = EveToken.objects.get(evecharacter__external_id=token_entity_id)
     except EveToken.DoesNotExist:
+        logger.warning(e)
         return "Unknown Structure"
 
     response = EveClient.call('get_universe_structures_structure_id', token=token, structure_id=structure_id)

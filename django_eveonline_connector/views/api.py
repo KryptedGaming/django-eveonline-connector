@@ -141,7 +141,7 @@ class ContactJson(BaseDatatableView):
         json_data = []
         for item in qs:
             json_data.append([
-                item.name,
+                item.contact_name,
                 item.contact_type,
                 item.standing
             ])
@@ -150,10 +150,10 @@ class ContactJson(BaseDatatableView):
 
 class ContractJson(BaseDatatableView):
     model = EveContract
-    columns = ['date_created', 'contract_status',
-               'contract_type', 'issued_by', 'issued_to', 'contract_items']
-    order_columns = ['date_created', 'contract_status',
-                     'contract_type', 'issued_by', 'issued_to', 'contract_items']
+    columns = ['date_issued', 'status',
+               'type', 'issuer_name', 'assignee_name', 'items']
+    order_columns = ['date_issued', 'status',
+                     'type', 'issuer_name', 'assignee_name', 'items']
 
     def filter_queryset(self, qs):
         # implement searching
@@ -171,16 +171,16 @@ class ContractJson(BaseDatatableView):
     def prepare_results(self, qs):
         json_data = []
         for contract in qs:
-            date_created = contract.date_created
-            contract_status = contract.contract_status
-            contract_type = contract.contract_type
-            from_who = contract.issued_by
-            if contract.accepted_by:
-                to_who = contract.accepted_by
+            date_issued = contract.date_issued
+            status = contract.status
+            type = contract.type
+            issuer_name = contract.issuer_name
+            if contract.acceptor_name:
+                assignee_name = contract.acceptor_name
             elif contract.issued_to:
-                to_who = contract.issued_to
+                assignee_name = contract.assignee_name
             else:
-                to_who = "Public"
+                assignee_name = "Public"
             actions = """
                 <button class="text-center btn btn-success" data-toggle="modal" data-target="#view_%s"><i class="fa fa-eye"></i></button>
                 <div class="modal fade col-md-12" id="view_%s" data-backdrop="false">
@@ -198,14 +198,14 @@ class ContractJson(BaseDatatableView):
                         </div>
                     </div>
                 </div>
-            """ % (contract.pk, contract.pk, contract.contract_items.replace("\n", "<br>"))
+            """ % (contract.pk, contract.pk, contract.items.replace("\n", "<br>"))
 
             json_data.append([
-                date_created.strftime("%m-%d-%Y"),
-                contract_status,
-                contract_type.replace("_", " ").upper(),
-                from_who,
-                to_who,
+                date_issued.strftime("%m-%d-%Y"),
+                status,
+                type.replace("_", " ").upper(),
+                issuer_name,
+                assignee_name,
                 actions
             ])
         return json_data

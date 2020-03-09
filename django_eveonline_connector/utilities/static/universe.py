@@ -15,6 +15,8 @@ def resolve_type_id_to_type_name(type_id):
                 "select typeName from invTypes where typeID = %s" % type_id)
             row = str(cursor.fetchone()[0])
         return row 
+    except TypeError as e:
+        logger.warning("Unable to find type_id(%s) in static database" % type_id)
     except ConnectionDoesNotExist as e:
         logger.warning("EVE static database is not installed: this slows down your tasks")
         raise(e)
@@ -182,6 +184,9 @@ def resolve_location_id_to_station(location_id):
             cursor.execute(query)
             row = str(cursor.fetchone()[0])
         return row
+    except TypeError as e:
+        logger.info(
+            "Unable to find location_id(%s) in static database" % location_id)
     except ConnectionDoesNotExist as e:
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
@@ -189,20 +194,28 @@ def resolve_location_id_to_station(location_id):
         logger.warning(
             "EVE static database is not installed: this slows down your tasks")
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)
 
     logger.warning("Resolving location_id using ESI")
-    return get_station_id(location_id)['name']
+    response = get_station_id(location_id)
+    if 'name' not in response:
+        return None 
+    return response['name']
 
 def resolve_location_from_location_id_location_type(location_id, location_type, token_entity_id):
     location = "Unknown Location"
+    logger.debug("Resolving location_id (%s) of location_type(%s) to location_name" %
+        (location_id, location_type))
     try:
         if location_type == 'station':
             location = resolve_location_id_to_station(location_id)
+        elif location_type == 'structure': 
+            location = get_structure_id(location_id, token_entity_id)
         elif location_type == 'other':
             location = get_structure_id(location_id, token_entity_id)
     except Exception as e:
-        logger.warning("Failed to resolve location for asset: %s" % data_row)
+        logger.error("Failed to resolve location_id (%s) of location_type (%s)" % 
+            (location_id, location_type))
         logger.exception(e)
 
     return location
