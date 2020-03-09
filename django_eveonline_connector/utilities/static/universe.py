@@ -1,175 +1,166 @@
 from django.db import connections
 from django_eveonline_connector.utilities.esi.universe import *
 from django.db.utils import ConnectionDoesNotExist, OperationalError
+import django.db.utils
 import logging
 
 logger = logging.getLogger(__name__)
 
-
-def resolve_type_id_to_type_name(type_id):
-    from django_eveonline_connector.utilities.esi.universe import get_type_id
-    type_name = None
+def query_static_database(query):
+    """
+    Executes the SQL query on the 'eve_static' database.
+    If the value is not found, returns None. 
+    """
     try:
         with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select typeName from invTypes where typeID = %s" % type_id)
-            row = str(cursor.fetchone()[0])
-        return row 
-    except TypeError as e:
-        logger.warning("Unable to find type_id(%s) in static database" % type_id)
-    except ConnectionDoesNotExist as e:
-        logger.warning("EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
-        logger.exception(e)
-
-    logger.warning("Resolving type_id (%s) using ESI" % type_id)
-    response = get_type_id(type_id)
-    
-    if 'name' in response:
-        type_name=response['name']
-    
-    if not type_name:
-        logger.error("Failed to resolve type_id (%s) to type_name" % type_id)
-    
-    return type_name
-
-def resolve_type_name_to_type_id(type_name):
-    from django_eveonline_connector.utilities.esi.universe import resolve_names
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select typeID from invTypes where typeName = %s" % type_name)
-            row = str(cursor.fetchone()[0])
-        return row
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
+            cursor.execute(query)
+            result = cursor.fetchone()
+        if result:
+            return result[0]
+    except django.db.utils.DatabaseError as e:
+        logger.error("EVE Static Database is not properly configured, or ran into an error.")
         logger.exception(e)
         
+    return None 
 
-    logger.warning("Resolving type_name using ESI")
-    type_id = resolve_names(type_name)['inventory_types'][0]['id']
+def resolve_type_id_to_type_name(type_id, lazy=False):
+    """
+    Resolves an EVE Online type_id to type_name, using the static database. 
+    Returns None if not found.
+    """
+    query = "select typeName from invTypes where typeID = %s" % type_id
+    type_name = query_static_database(query)
+    
+    if type_name:
+        return type_name 
+    
+
+    logger.warning("Resolving type_id (%s) using ESI" % type_id)
+    type_name = get_type_id(type_id)
+
+    if not type_name:
+        logger.error("Failed to resolve type_id (%s) to type_name" % type_id)
+        if lazy:
+            return "Unknown Type Name"
+
+    return type_name
+
+def resolve_type_name_to_type_id(type_name, lazy=False):
+    """
+    Resolve type_name to type_id.
+    WARNING: Prone to SQL injection, do not expose to user.
+    """
+    query = "select typeID from invTypes where typeName = '%s'" % type_name
+    type_id = query_static_database(query)
+
+    if type_id:
+        return type_id         
+
+    logger.warning("Resolving type_id from type_name (%s) using ESI" % type_name)
+    response = resolve_names(type_name)
+    if 'inventory_types' in response and response['inventory_types'] and 'id' in response['inventory_types'][0]:
+        type_id = response['inventory_types'][0]['id']
+    
     if not type_id:
         logger.error(
             "Error resolving EVE type_name(%s) to type_id" % type_name)
-    return type_id
+        if lazy:
+            return -1
 
-def resolve_type_id_to_group_id(type_id):
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select groupID from invTypes where typeID = %s" % type_id)
-            row = str(cursor.fetchone()[0])
-        return row
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
-        logger.exception(e)
-        
-    logger.warning("Resolving group_id using ESI")
+    return type_id 
 
-    group_id = get_type_id(type_id)['group_id']
+def resolve_type_id_to_group_id(type_id, lazy=False):
+    query = "select groupID from invTypes where typeID = %s" % type_id
+    group_id = query_static_database(query)
+    
+    if group_id:
+        return group_id 
+
+    logger.warning("Resolving group_id from type_id (%s) using ESI" % type_id)
+
+    response = get_type_id(type_id)
+    if 'group_type' in response:
+        group_id = response['group_id']
+
     if not group_id:
         logger.error("Error resolving EVE type_id(%s) to group_id" % type_id)
+        if lazy:
+            return -1
+
     return group_id 
 
-def resolve_type_id_to_category_name(type_id):
+def resolve_type_id_to_category_name(type_id, lazy=False):
     category_id = resolve_type_id_to_category_id(type_id)
     category_name = resolve_category_id_to_category_name(category_id)
     if not category_name:
         logger.error("Failed to resolve type_id(%s) to category name" % type_id)
+        if lazy:
+            return "Unknown Category"
     return category_name
 
-def resolve_group_id_to_group_name(group_id):
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select groupName from invGroups where groupID = %s" % group_id)
-            row = str(cursor.fetchone()[0])
-        return row
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
-        logger.error(
-            "Error resolving EVE type_id(%s) to group_id: %s" % (group_id, e))
+def resolve_group_id_to_group_name(group_id, lazy=False):
+    query = "select groupName from invGroups where groupID = %s" % group_id
+    group_name = query_static_database(query)
 
-    logger.warning("Resolving group_id using ESI")
-    group_name = get_group_id(group_id)['name']
+    if group_name:
+        return group_name
+
+    logger.warning("Resolving group_name from group_id (%s) using ESI" % group_id)
+    response = get_group_id(group_id)
+    if 'name' in response:
+        group_name = response['name']
+
     if not group_name:
         logger.error("Error resolving EVE type_id(%s) to group_id" % group_id)
+        if lazy:
+            return "Unknown Group"
+
     return group_name 
 
 
-def resolve_type_id_to_group_name(type_id):
+def resolve_type_id_to_group_name(type_id, lazy=False):
     group_id = resolve_type_id_to_group_id(type_id)
     return resolve_group_id_to_group_name(group_id)
 
 
-def resolve_group_id_to_category_id(group_id):
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select categoryID from invGroups where groupID = %s" % group_id)
-            row = str(cursor.fetchone()[0])
-        return row
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
-        logger.error(
-            "Error resolving EVE group_id(%s) to category_id: %s" % (group_id, e))
-    logger.warning("Resolving category_id using ESI")
-    return get_group_id(group_id)['category_id']
+def resolve_group_id_to_category_id(group_id, lazy=False):
+    query = "select categoryID from invGroups where groupID = %s" % group_id
+    category_id = query_static_database(query)
 
-def resolve_category_id_to_category_name(category_id):
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            cursor.execute(
-                "select categoryName from invCategories where categoryID = %s" % category_id)
-            row = str(cursor.fetchone()[0])
-        return row
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-        raise(e)
-    except Exception as e:
-        logger.error(
-            "Error resolving EVE category_id(%s) to category_name: %s" % (category_id, e))
-    logger.warning("Resolving category_id using ESI")
-    return get_category_id(category_id)['name']
+    if category_id:
+        return category_id
 
+    logger.warning("Resolving category_id from group_id (%s) using ESI" % group_id)
+
+    response = get_group_id(group_id)
+    if 'category_id' in response:
+        category_id = response['category_id']
+    
+    if not category_id:
+        logger.error("Error resolving category_id from group_id (%s)" % group_id)
+        if lazy:
+            return "Unknown Category"
+    
+    return category_id
+
+def resolve_category_id_to_category_name(category_id, lazy=False):
+    query = "select categoryName from invCategories where categoryID = %s" % category_id
+    category_name = query_static_database(query)
+
+    if category_name:
+        return category_name 
+
+    logger.warning("Resolving category_name from category_id (%s) using ESI" % category_id)
+    
+    response = get_category_id(category_id)
+    if 'name' in response:
+        category_name = response['name']
+
+    if not category_name:
+        logger.error("Error resolving category_name from category_id (%s)" % category_id)
+        if lazy:
+            return -1
+    return category_name
 
 def resolve_type_id_to_category_id(type_id):
     group_id = resolve_type_id_to_group_id(type_id)
@@ -177,31 +168,36 @@ def resolve_type_id_to_category_id(type_id):
     return int(category_id)
 
 
-def resolve_location_id_to_station(location_id):
-    try:
-        with connections['eve_static'].cursor() as cursor:
-            query = "select stationName from staStations where stationID = %s" % location_id
-            cursor.execute(query)
-            row = str(cursor.fetchone()[0])
-        return row
-    except TypeError as e:
-        logger.info(
-            "Unable to find location_id(%s) in static database" % location_id)
-    except ConnectionDoesNotExist as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-    except OperationalError as e:
-        logger.warning(
-            "EVE static database is not installed: this slows down your tasks")
-    except Exception as e:
-        logger.exception(e)
+def resolve_location_id_to_station(location_id, lazy=False):
+    query = "select stationName from staStations where stationID = %s" % location_id
+    station_name = query_static_database(query)
 
-    logger.warning("Resolving location_id using ESI")
+    if station_name:
+        return station_name
+
+    logger.warning("Resolving location_id (%s) to station using ESI" % location_id)
     response = get_station_id(location_id)
-    if 'name' not in response:
-        return None 
-    return response['name']
 
+    if 'name' in response:
+        station_name = response['name']
+
+    if not station_name:
+        if lazy:
+            return "Unknown Station"
+    
+    return station_name 
+
+def resolve_location_id(location_id, token_entity_id):
+    location_name = resolve_location_id_to_station(location_id)
+    if location_name:
+        return location_name
+
+    location_name = get_structure_id(location_id, token_entity_id)
+    if location_name:
+        return location_name
+
+    return "Unknown Location"
+    
 def resolve_location_from_location_id_location_type(location_id, location_type, token_entity_id):
     location = "Unknown Location"
     logger.debug("Resolving location_id (%s) of location_type(%s) to location_name" %

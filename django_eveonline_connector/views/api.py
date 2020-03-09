@@ -276,14 +276,14 @@ class JournalJson(BaseDatatableView):
 
 class TransactionJson(BaseDatatableView):
     model = EveTransaction
-    columns = ['client_name', 'item', 'quantity', 'value']
-    order_columns = ['client_name', 'item', 'quantity', 'value']
+    columns = ['client_name', 'item_name', 'quantity', 'value']
+    order_columns = ['client_name', 'item_name', 'quantity', 'value']
 
     def filter_queryset(self, qs):
         # implement searching
         search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(Q(item__istartswith=search) |
+            qs = qs.filter(Q(item_name__istartswith=search) |
                            Q(client__istartswith=search)
                            )
 
@@ -317,7 +317,7 @@ class TransactionJson(BaseDatatableView):
 
             json_data.append([
                 transaction_client,
-                transaction.item,
+                transaction.item_name,
                 transaction.quantity,
                 transaction_amount,
             ])

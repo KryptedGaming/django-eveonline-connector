@@ -102,6 +102,7 @@ class EveClient(models.Model):
                                 "Encountered unknown scope '%s', please notify Krypted developers." % scope)
                         required_scopes.add(scope)
         return required_scopes
+        
     @staticmethod
     def get_instance():
         app_config = apps.get_app_config('django_eveonline_connector')
@@ -824,7 +825,7 @@ class EveTransaction(EveEntityData):
     client_name = models.CharField(max_length=64)
     client_type = models.CharField(max_length=64, choices=id_types)
     location_name = models.CharField(max_length=64)
-    type_name = models.CharField(max_length=64)
+    item_name = models.CharField(max_length=64)
 
     @property
     def get_journal_entry(self):
@@ -870,7 +871,7 @@ class EveTransaction(EveEntityData):
 
         transaction.client_name = resolved_ids[transaction.client_id]['name']
         transaction.client_type = resolved_ids[transaction.client_id]['type']
-        transaction.type_name = resolve_type_id_to_type_name(
+        transaction.item_name = resolve_type_id_to_type_name(
             transaction.type_id)
 
         if resolve_location_from_location_id_location_type(transaction.location_id, 'station', entity_external_id) == 'Unknown Location':

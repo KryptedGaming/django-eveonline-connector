@@ -37,9 +37,9 @@ def resolve_ids_with_types(ids):
 def get_type_id(type_id):
     try:
         response = EveClient.call('get_universe_types_type_id', type_id=type_id, raise_exception=True)
-        return response.data
+        return response.data['name']
     except Exception as e:
-        logger.exception(e)
+        logger.error("Failed to resolve type_id(%s) using ESI. Notify CCP.")
         return None 
 
 
