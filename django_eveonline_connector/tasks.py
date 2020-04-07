@@ -12,6 +12,41 @@ Global Tasks
 These are what users register to maintain up-to-date EveEntity information.
 """
 @shared_task
+def update_affiliations():
+    """
+    Update the affiliations (character corporations, corporation alliances)
+    Cached for 3600 seconds, so don't run it more frequently than that. 
+    """
+    character_ids = EveCharacter.objects.all().values_list('external_id', flat=True)
+    affiliations = EveClient.call(
+        'post_characters_affiliation', characters=character_ids).data
+
+    for affiliation in affiliations:
+        try:
+            character = EveCharacter.objects.get(
+                external_id=affiliation['character_id'])
+            if not EveCorporation.objects.filter(external_id=affiliation['corporation_id']):
+                EveCorporation.create_from_external_id(
+                    affiliation['corporation_id'])
+            corporation = EveCorporation.objects.get(
+                external_id=affiliation['corporation_id'])
+            if 'alliance_id' in affiliation:
+                if not EveAlliance.objects.filter(external_id=affiliation['alliance_id']):
+                    EveAlliance.create_from_external_id(affiliation['alliance_id'])
+                alliance = EveAlliance.objects.get(external_id=affiliation['alliance_id'])
+            else:
+                alliance = None 
+
+            character.corporation = corporation
+            character.save()
+            if alliance:
+                corporation.alliance = alliance
+                corporation.save()
+        except Exception as e:
+            logger.error("Failed to update affiliation: %s" % affiliation)
+            logger.exception(e)
+            
+@shared_task
 def update_all_characters():
     for eve_character in EveCharacter.objects.all():
         update_character_corporation.apply_async(
