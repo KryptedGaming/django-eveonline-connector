@@ -19,8 +19,8 @@ def update_affiliations():
     """
     character_ids = EveCharacter.objects.all().values_list('external_id', flat=True)
     affiliations = EveClient.call(
-        'post_characters_affiliation', characters=character_ids).data
-
+        'post_characters_affiliation', characters=character_ids)
+        
     for affiliation in affiliations:
         try:
             character = EveCharacter.objects.get(
