@@ -337,7 +337,7 @@ class TestEveAsset(TestCase):
         self.assertTrue(eve_asset.category_id == mock_resolve_type_id_to_category_id.return_value)
         self.assertTrue(eve_asset.item_name == mock_resolve_type_id_to_type_name.return_value)
         self.assertTrue(eve_asset.item_type == mock_resolve_type_id_to_category_name.return_value)
-        self.assertTrue(eve_asset.location == mock_resolve_location_from_location_id_location_type.return_value)
+        self.assertTrue(eve_asset.location_name == mock_resolve_location_from_location_id_location_type.return_value)
         eve_asset.delete() 
         
         # remove blueprint copy
@@ -389,25 +389,32 @@ class TestEveJumpClone(TransactionTestCase):
         self.assertTrue(jump_clone.location == mock_resolve_location_from_location_id_location_type.return_value)
         self.assertTrue(jump_clone.implants == expected_implant_string)
 
-# class TestEveContact(TransactionTestCase):
-#     eve_data_row = {
-#         "contact_id": 123456,
-#         "contact_type": 'character',
-#         "is_blocked": True,
-#         "is_watched": True,
-#         "label_ids": [1,2,3,4,5],
-#         "standing": -5.0,
-#         }
+class TestEveContact(TransactionTestCase):
+    eve_data_row = {
+    "contact_id": 123456,
+    "contact_type": 'character',
+    "is_blocked": True,
+    "is_watched": True,
+    "label_ids": [1,2,3,4,5],
+    "standing": -5.0,
+    }
 
-#         eve_entity = None 
+    eve_entity = None 
     
-#     def setUp(self):
-#         eve_entity = EveEntity.objects.create(name="TEST_CONTACT", external_id=3)
+    def setUp(self):
+        eve_entity = EveEntity.objects.create(name="TEST_CONTACT", external_id=3)
     
-#     def tearDown(self):
-#         self.eve_entity.delete() 
+    def tearDown(self):
+        self.eve_entity.delete() 
 
-#     @patch('django_eveonline_connector.models.resolve_id')
-#     def test_create_from_esi_row(self, mock_resolve_ids):
-#         mock_resolve_id.return_value = "Contact Name"
-#         EveContact.create_from_esi_row(self.eve_data_row, self.eve_entity.external_id)
+    @patch('django_eveonline_connector.models.resolve_id')
+    def test_create_from_esi_row(self, mock_resolve_ids):
+        mock_resolve_ids.return_value = "Contact Name"
+        EveContact.create_from_esi_row(self.eve_data_row, self.eve_entity.external_id)
+
+        contact = EveContact.objects.all()[0]
+        self.assertTrue(contact_id=self.eve_data_row['contact_id'])
+        self.assertTrue(is_blocked=self.eve_data_row['is_blocked'])
+        self.assertTrue(is_watched=self.eve_data_row['is_watched'])
+        self.assertTrue(label_ids=self.eve_data_row['label_ids'])
+        self.assertTrue(standing=self.eve_data_row['standing'])
