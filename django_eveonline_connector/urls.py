@@ -2,20 +2,20 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, re_path
-from django_eveonline_connector.views import sso, character, corporation, api
+from django_eveonline_connector.views import base, sso, character, corporation, api
+from django_eveonline_connector.views.base import EveOnlineSetupView
 
 # SSO 
-urlpatterns = [
+urlpatterns += [
     path('sso/callback', sso.sso_callback,
          name="django-eveonline-connector-sso-callback"),
-    path('sso/token/type/select/', sso.select_sso_token_type,
-         name="django-eveonline-connector-sso-token-type-select"),
-    path('sso/token/add/<str:token_type_name>/', sso.add_sso_token,
+    path('sso/token/add/', sso.add_sso_token,
          name="django-eveonline-connector-sso-token-add"),
+    path('sso/token/update/<int:token_id>/', sso.update_sso_token,
+         name="django-eveonline-connector-sso-token-update"),
     path('sso/token/remove/<int:pk>/', sso.remove_sso_token,
          name="django-eveonline-connector-sso-token-remove"),
-    path('corporations/', corporation.view_corporations,
-         name="django-eveonline-connector-corporations-view"),
+
 ]
 
 # Characters
@@ -24,10 +24,12 @@ urlpatterns += [
          name="django-eveonline-connector-characters-view"),
     path('characters/select-primary/', character.select_primary_character,
          name="django-eveonline-connector-character-select-primary"),
+    path('characters/select-character/', character.select_character,
+         name="django-eveonline-connector-character-select"),
     path('character/<int:character_id>/set-primary/', character.set_primary_character,
          name="django-eveonline-connector-character-set-primary"),
-    path('character/<int:external_id>/refresh/', character.refresh_character,
-         name='django-eveonline-connector-character-refresh'),
+    path('character/<int:external_id>/refresh/', character.refresh_character_public,
+         name='django-eveonline-connector-character-refresh-public'),
     path('character/view/<int:external_id>/', character.view_character,
          name="django-eveonline-connector-view-character"),
     path('character/refresh/<int:external_id>/', character.refresh_character,
@@ -49,12 +51,14 @@ urlpatterns += [
 ]
 
 # Corporation 
-# urlpatterns += [
-#     path('corporation/view/<int:external_id>/', character.view_corporation,
-#          name="django-eveonline-connector-view-corporation"),
-#     path('corporation/refresh/<int:external_id>/', character.refresh_corporation,
-#          name="django-eveonline-connector-refresh-corporation"),
-# ]
+urlpatterns += [
+    path('corporations/', corporation.view_corporations,
+         name="django-eveonline-connector-corporations-view"),
+    # path('corporation/view/<int:external_id>/', character.view_corporation,
+    #      name="django-eveonline-connector-view-corporation"),
+    # path('corporation/refresh/<int:external_id>/', character.refresh_corporation,
+    #      name="django-eveonline-connector-refresh-corporation"),
+]
 
 # Alliance
 # urlpatterns += [

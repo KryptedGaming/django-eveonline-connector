@@ -2,11 +2,10 @@ from django.contrib import admin, messages
 from django.conf import settings 
 from django.apps import apps 
 from django import forms
-from django_eveonline_connector.models import EveClient, EveScope, EveCharacter, EveToken, EveCorporation, EveAlliance, EveTokenType
+from django_eveonline_connector.models import EveClient, EveScope, EveCharacter, EveToken, EveCorporation, EveAlliance
+from django.urls import reverse
+from django.utils.safestring import mark_safe
 
-if settings.DEBUG:
-    admin.site.register(EveCharacter)
-    admin.site.register(EveToken)
 
 app_config = apps.get_app_config('django_eveonline_connector')
 if app_config.ESI_SECRET_KEY and app_config.ESI_CLIENT_ID and app_config.ESI_CALLBACK_URL and app_config.ESI_BASE_URL:
@@ -29,18 +28,34 @@ else:
     else:
         admin.site.register(EveClient)
 
-admin.site.register(EveScope)
-@admin.register(EveTokenType)
-class EveTokenTypeAdmin(admin.ModelAdmin):
-    def delete_model(self, request, obj):
-        try:
-            obj.delete()
-        except Exception as e: 
-            messages.warning(request, "Default Token Type was generated. At least one instance must exist.")
-    
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            try:
-                obj.delete()
-            except Exception as e: 
-                messages.warning(request, "Default Token Type was generated. At least one instance must exist.")
+@admin.register(EveScope)
+class EveScopeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'required')
+
+admin.site.register(EveCorporation)
+admin.site.register(EveToken)
+
+@admin.register(EveCharacter)
+class EveCharacterAdmin(admin.ModelAdmin):
+    list_display = ('name', 'get_corporation', 'get_user')
+    search_fields = ('name', )
+
+    @mark_safe
+    def get_corporation(self, obj):
+        if obj.corporation:
+            link = reverse("admin:django_eveonline_connector_evecorporation_change", args=[
+                           obj.corporation.pk])
+            return u'<a href="%s">%s</a>' % (link, obj.corporation.name)
+        else:
+            return None 
+    get_corporation.allow_tags=True
+    get_corporation.short_description = "Corporation"
+
+    @mark_safe 
+    def get_user(self, obj):
+        if obj.token: 
+            link = reverse("admin:auth_user_change", args=[obj.token.user.pk])
+            return u'<a href="%s">%s</a>' % (link, obj.token.user.username)
+        else:
+            return None 
+    get_user.short_description = "User"

@@ -45,12 +45,15 @@ def update_affiliations():
 
 @shared_task
 def update_characters():
-    """
-    Legacy method that will be deprecated. Use update_affiliations().
-    """
     for eve_character in EveCharacter.objects.all():
-        update_character_corporation.apply_async(
-            args=[eve_character.external_id])
+        if eve_character.token: 
+            update_character_assets.apply_async(args=[eve_character.character_id])
+            update_character_contacts.apply_async(args=[eve_character.character_id])
+            update_character_contracts.apply_async(args=[eve_character.character_id])
+            update_character_journal.apply_async(args=[eve_character.character_id])
+            update_character_jumpclones.apply_async(args=[eve_character.character_id])
+            update_character_skills.apply_async(args=[eve_character.character_id])
+            update_character_transactions.apply_async(args=[eve_character.character_id])
 
 @shared_task
 def update_corporations():
@@ -105,20 +108,21 @@ def update_character_eveentitydata(op, *args, delete=True, **kwargs):
         data_model.create_from_esi_response(items, character.external_id)
 
 @shared_task
-def update_character_assets(*args, **kwargs):
+def update_character_assets(character_id=None, *args, **kwargs):
     """
     Updates all character assets from ESI.
     Highly recommended to not use this frequently, unless you absolutely need it.
     """
     op = 'get_characters_character_id_assets'
     data_model = EveAsset 
-    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
+    update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
 
 @shared_task
-def update_character_jumpclones(*args, **kwargs):
+def update_character_jumpclones(character_id, *args, **kwargs):
     op = 'get_characters_character_id_clones'
     data_model = EveJumpClone
-    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
+    update_character_eveentitydata(op, *args, **kwargs, character_id=character_id, data_model=data_model)
 
 @shared_task 
 def update_character_contacts(*args, **kwargs):
@@ -140,7 +144,7 @@ def update_character_skills(*args, **kwargs):
     update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
 
 @shared_task
-def update_character_journals(*args, **kwargs):
+def update_character_journal(*args, **kwargs):
     op = 'get_characters_character_id_wallet_journal'
     data_model = EveJournalEntry
     update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)

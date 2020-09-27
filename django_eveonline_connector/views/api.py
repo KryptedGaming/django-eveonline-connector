@@ -213,12 +213,12 @@ class ContractJson(BaseDatatableView):
 
 class JournalJson(BaseDatatableView):
     model = EveJournalEntry
-    columns = ['date', 'type', 'first_party', 'second_party', 'value']
-    order_columns = ['date', 'type', 'first_party', 'second_party', 'value']
+    columns = ['date', 'ref_type', 'first_party_name', 'second_party_name', 'amount']
+    order_columns = ['date', 'ref_type', 'first_party_name', 'second_party_name', 'amount']
 
     def filter_queryset(self, qs):
         # implement searching
-        search = self.request.GET.get('search[value]', None)
+        search = self.request.GET.get('search[amount]', None)
         if search:
             qs = qs.filter(Q(type__istartswith=search) |
                            Q(first_party__istartswith=search) |
@@ -243,29 +243,29 @@ class JournalJson(BaseDatatableView):
                 entry_first_party = """
                 <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
                 %s 
-                """ % (entry.first_party_type.title(), entry.first_party_id, first_party_ext, entry.first_party)
+                """ % (entry.first_party_type.title(), entry.first_party_id, first_party_ext, entry.first_party_name)
             else:
-                entry_first_party = entry.type
+                entry_first_party = entry.ref_type
             # add avatars for second party field
             if entry.second_party_type == "corporation" or entry.second_party_type == "character":
                 entry_second_party = """
                 <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
                 %s 
-                """ % (entry.second_party_type.title(), entry.second_party_id, second_party_ext, entry.second_party)
+                """ % (entry.second_party_type.title(), entry.second_party_id, second_party_ext, entry.second_party_name)
             else:
-                entry.second_party = entry.type
-            # clean up value html
-            if entry.value < 0:
+                entry.second_party_name = entry.ref_type
+            # clean up amount html
+            if entry.amount < 0:
                 amount_color = "red"
             else:
                 amount_color = "green"
             entry_amount = """
                 <p><span style="color: %s">%s</span></p>
-            """ % (amount_color, f'{entry.value:,}')
+            """ % (amount_color, f'{entry.amount:,}')
 
             json_data.append([
                 entry.date.strftime("%m-%d-%Y"),
-                entry.type.title(),
+                entry.ref_type.title(),
                 entry_first_party,
                 entry_second_party,
                 entry_amount,
@@ -276,12 +276,12 @@ class JournalJson(BaseDatatableView):
 
 class TransactionJson(BaseDatatableView):
     model = EveTransaction
-    columns = ['client_name', 'item_name', 'quantity', 'value']
-    order_columns = ['client_name', 'item_name', 'quantity', 'value']
+    columns = ['client_name', 'item_name', 'quantity', 'unit_price']
+    order_columns = ['client_name', 'item_name', 'quantity', 'unit_price']
 
     def filter_queryset(self, qs):
         # implement searching
-        search = self.request.GET.get('search[value]', None)
+        search = self.request.GET.get('search[unit_price]', None)
         if search:
             qs = qs.filter(Q(item_name__istartswith=search) |
                            Q(client__istartswith=search)
@@ -298,22 +298,22 @@ class TransactionJson(BaseDatatableView):
             client_ext = "jpg"
             if transaction.client_type == "corporation":
                 client_ext = "png"
-            # add avatars for client
-            if transaction.client_type.upper() == "corporation" or transaction.client_type.upper() == "character":
+            # add avatars for client_name
+            if transaction.client_type.lower() == "corporation" or transaction.client_type.lower() == "character":
                 transaction_client = """
                 <img width="32px" src="https://imageserver.eveonline.com/%s/%s_64.%s" class="img-circle img-bordered-sm" alt="Avatar">
                 %s 
-                """ % (transaction.client_type.title(), transaction.client_id, client_ext, transaction.client)
+                """ % (transaction.client_type.title(), transaction.client_id, client_ext, transaction.client_name)
             else:
                 transaction_client = transaction.client_type
-            # clean up value html
+            # clean up unit_price html
             if transaction.is_buy:
                 amount_color = "red"
             else:
                 amount_color = "green"
             transaction_amount = """
                 <p><span style="color: %s">%s</span></p>
-            """ % (amount_color, f'{transaction.value:,}')
+            """ % (amount_color, f'{transaction.unit_price:,}')
 
             json_data.append([
                 transaction_client,

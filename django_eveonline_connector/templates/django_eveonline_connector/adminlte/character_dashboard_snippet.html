@@ -33,8 +33,12 @@
 
             <td class="col-lg-6 col-xs-6">
                 <div style="display: flex;" class="btn-group btn-block">
-                    <a href="{% url 'django-eveonline-connector-character-refresh' token.evecharacter.external_id %}" style="flex: 1" class="btn btn-success"><i class="fa fa-refresh"></i></a>
+                    {% if token.valid %}
+                    <a href="{% url 'django-eveonline-connector-character-refresh-public' token.evecharacter.external_id %}" style="flex: 1" class="btn btn-success"><i class="fa fa-refresh"></i></a>
                     <a href="{% url 'django-eveonline-connector-sso-token-remove' token.pk %}" style="flex: 1" class="btn btn-danger"><i class="fa fa-times"></i></a>
+                    {% else %}
+                    <a href="{% url 'django-eveonline-connector-sso-token-update' token.pk %}" style="flex: 1" class="btn btn-warning">Update Token</a>
+                    {% endif %}
                 </div>
             </td>
         </tr>

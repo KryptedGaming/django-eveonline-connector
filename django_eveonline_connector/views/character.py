@@ -37,11 +37,14 @@ def select_primary_character(request):
         'characters': EveCharacter.objects.filter(token__user=request.user),
     })
 
-
+@login_required
+def select_character(request, required_scopes, next):
+    return redirect(next, character_id)
 
 @login_required
-def refresh_character(request, external_id):
+def refresh_character_public(request, external_id):
     character = EveCharacter.objects.get(external_id=external_id)
+    character.token.refresh()
     character.update_character_corporation()
     messages.success(request, "Character successfully updated")
     return redirect("/")
@@ -141,9 +144,9 @@ def view_character_skills(request, external_id):
         context={
             'character': character,
             'skills': character_skills,
-            'skill_names': ",".join([skill.name for skill in character_skills]),
-            'skill_levels': ",".join([str(skill.level) for skill in character_skills]),
-            'groups': set([skill.group for skill in character_skills]),
+            'skill_names': ",".join([skill.skill_name for skill in character_skills]),
+            'skill_levels': ",".join([str(skill.trained_skill_level) for skill in character_skills]),
+            'groups': set([skill.skill_group for skill in character_skills]),
         }
     )
 

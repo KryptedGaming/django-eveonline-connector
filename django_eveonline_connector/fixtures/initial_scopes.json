@@ -3,147 +3,112 @@
         "model": "django_eveonline_connector.evescope",
         "pk": 1,
         "fields": {
-            "name": "publicData"
+            "name": "publicData",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 2,
         "fields": {
-            "name": "esi-contracts.read_character_contracts.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 3,
-        "fields": {
-            "name": "esi-location.read_location.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 4,
-        "fields": {
-            "name": "esi-location.read_ship_type.v1"
+            "name": "esi-contracts.read_character_contracts.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 5,
         "fields": {
-            "name": "esi-mail.read_mail.v1"
+            "name": "esi-mail.read_mail.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 6,
         "fields": {
-            "name": "esi-skills.read_skills.v1"
+            "name": "esi-skills.read_skills.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 7,
         "fields": {
-            "name": "esi-skills.read_skillqueue.v1"
+            "name": "esi-skills.read_skillqueue.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 8,
         "fields": {
-            "name": "esi-wallet.read_character_wallet.v1"
+            "name": "esi-wallet.read_character_wallet.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 9,
         "fields": {
-            "name": "esi-characters.read_contacts.v1"
+            "name": "esi-characters.read_contacts.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 10,
         "fields": {
-            "name": "esi-corporations.read_corporation_membership.v1"
+            "name": "esi-corporations.read_corporation_membership.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 11,
         "fields": {
-            "name": "esi-assets.read_assets.v1"
+            "name": "esi-assets.read_assets.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 12,
         "fields": {
-            "name": "esi-clones.read_clones.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 13,
-        "fields": {
-            "name": "esi-fleets.read_fleet.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 14,
-        "fields": {
-            "name": "esi-fleets.write_fleet.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 15,
-        "fields": {
-            "name": "esi-characters.read_chat_channels.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 16,
-        "fields": {
-            "name": "esi-industry.read_character_jobs.v1"
+            "name": "esi-clones.read_clones.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 17,
         "fields": {
-            "name": "esi-markets.read_character_orders.v1"
+            "name": "esi-markets.read_character_orders.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 18,
         "fields": {
-            "name": "esi-characters.read_corporation_roles.v1"
+            "name": "esi-characters.read_corporation_roles.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
-        "pk": 19,
+        "pk": 20,
         "fields": {
-            "name": "esi-location.read_online.v1"
+            "name": "esi-universe.read_structures.v1",
+            "required": true
         }
     },
     {
         "model": "django_eveonline_connector.evescope",
         "pk": 21,
         "fields": {
-            "name": "esi-universe.read_structures.v1"
-        }
-    },
-    {
-        "model": "django_eveonline_connector.evescope",
-        "pk": 22,
-        "fields": {
-            "name": "esi-characters.read_standings.v1"
+            "name": "esi-characters.read_standings.v1",
+            "required": true
         }
     }
 ]

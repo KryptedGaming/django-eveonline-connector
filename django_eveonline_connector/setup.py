@@ -30,7 +30,8 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
-    install_requiers=[
-        'esipy'
+    install_requires=[
+        'esipy',
+        'django-singleton-admin-2',
     ]
 )

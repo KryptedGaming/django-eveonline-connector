@@ -5,10 +5,12 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
+from django_singleton_admin.models import DjangoSingleton
 import datetime
 import logging
 import json
 import traceback
+from django.db.models import Q
 logger = logging.getLogger(__name__)
 app_config = apps.get_app_config('django_eveonline_connector')
 
@@ -24,7 +26,7 @@ These models are used as wrappers around EsiPy
 """
 
 
-class EveClient(models.Model):
+class EveClient(DjangoSingleton):
     esi_base_url = models.URLField(
         default="https://esi.evetech.net/latest/swagger.json?datasource=tranquility")
     esi_callback_url = models.URLField()
@@ -32,11 +34,46 @@ class EveClient(models.Model):
     esi_secret_key = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
-        self.pk = 0
+        
         super(EveClient, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.esi_callback_url
+        return str({
+            'esi_base_url': self.esi_base_url,
+            'esi_callback_url': self.esi_callback_url,
+            'esi_client_id': self.esi_client_id
+        })
+
+    def as_dict(self):
+        return {
+            'esi_base_url': self.esi_base_url,
+            'esi_callback_url': self.esi_callback_url,
+            'esi_client_id': self.esi_client_id
+        }
+
+    def get_sso_url(self, extra_scopes=[]):
+        """
+        Expects a list of scope names 
+        e.g ['esi.scope.v1', 'esi.scope.v2']
+        """
+        scope_list = EveScope.convert_to_list(EveScope.objects.filter(
+            Q(required=True) | 
+            Q(name__in=extra_scopes)
+        ))
+        scope_string = ",".join(scope_list)
+        scope_string = f"esi_sso_url:{scope_string}"
+        if scope_string in cache:
+            return cache.get(scope_string)
+        else:
+            esi_sso_url = EsiSecurity(
+                client_id=self.esi_client_id,
+                redirect_uri=self.esi_callback_url,
+                secret_key=self.esi_secret_key,
+                headers={'User-Agent': "Krypted Platform"}
+                ).get_auth_uri(scopes=scope_list,
+                        state=self.esi_client_id)
+            cache.set(scope_string, esi_sso_url, timeout=86400)
+            return esi_sso_url
 
     @staticmethod
     def call(op, raise_exception=False, **kwargs):
@@ -159,15 +196,16 @@ class EveClient(models.Model):
         verbose_name = "Eve Settings"
         verbose_name_plural = "Eve Settings"
 
-
 """
 EVE SSO Models 
 These models are used for the EVE Online token system
 """
 
+# TODO: remove type, all scopes added.. add scopes via fixtures 
 
 class EveScope(models.Model):
-    name = models.TextField()
+    name = models.TextField(unique=True)
+    required = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -180,30 +218,18 @@ class EveScope(models.Model):
     def convert_to_string(scopes):
         return ",".join([scope.name for scope in scopes])
 
-
-class EveTokenType(models.Model):
-    name = models.CharField(max_length=32, unique=True)
-    description = models.CharField(max_length=64)
-    scopes = models.ManyToManyField("EveScope", blank=True)
-    esi_sso_url = models.URLField(
-        editable=False, max_length=2056)  # set on save
-
-    def __str__(self):
-        return self.name
-
-    def get_scopes_list(self):
-        return EveScope.convert_to_list(self.scopes.all())
-
-    def get_scopes_string(self):
-        return EveScope.convert_to_string(self.scopes.all())
-
+    @staticmethod
+    def get_required():
+        return EveScope.objects.filter(required=True)
 
 class EveToken(models.Model):
     access_token = models.TextField()
     refresh_token = models.TextField()
     expires_in = models.IntegerField(default=0)
     expiry = models.DateTimeField(auto_now_add=True)
+    invalidated = models.DateTimeField(blank=True, null=True, default=None)
     scopes = models.ManyToManyField("EveScope", blank=True)
+    requested_scopes = models.ManyToManyField("EveScope", blank=True, related_name="requested_scopes", default=EveScope.get_required)
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="eve_tokens", null=True)
 
@@ -213,18 +239,37 @@ class EveToken(models.Model):
         except Exception as e:
             return "<%s:%s>" % ("Unknown Character", self.user)
 
+    def valid(self):
+        if self.requested_scopes.all().difference(self.scopes.all()).count() >= 1:
+            return False 
+        if self.invalidated:
+            return False
+        return True 
+
     def refresh(self):
         esi_security = EveClient.get_esi_security()
         esi_security.update_token(self.populate())
-        new_token = esi_security.refresh()
+
+        try:
+            new_token = esi_security.refresh()
+        except Exception as e:
+            if b"invalid_grant" in e.response:
+                self.invalidated = datetime.datetime.utcnow()
+                self.save()
+                return False    
+
         if timezone.now() > self.expiry:
+            if self.invalidated:
+                self.invalidated = None
             self.access_token = new_token['access_token']
             self.refresh_token = new_token['refresh_token']
             self.expiry = timezone.now() + datetime.timedelta(0,
                                                               new_token['expires_in'])
             self.save()
+            return True
         else:
             logger.info("Token refresh not needed")
+            return True
 
     def populate(self):
         data = {}
@@ -233,7 +278,6 @@ class EveToken(models.Model):
         data['expires_in'] = self.expires_in
 
         return data
-
 
 """
 Entity Models
@@ -256,6 +300,15 @@ class EveCharacter(EveEntity):
 
     token = models.OneToOneField(
         "EveToken", on_delete=models.SET_NULL, null=True)
+
+    @staticmethod
+    def get_primary_character(user):
+        primary_character_obj = PrimaryEveCharacterAssociation.objects.filter(
+            user=user).first()
+        if primary_character_obj:
+            return primary_character_obj.character
+        else:
+            return None 
 
     @property
     def avatar(self):
@@ -280,8 +333,8 @@ class EveCharacter(EveEntity):
 
     def update_character_corporation(self, corporation_id=None):
         if not corporation_id:
-            response = EveClient.call('post_characters_affiliation', characters=[self.character_id])
-            corporation_id = response[0]['corporation_id']
+            response = EveClient.call('post_characters_affiliation', characters=[self.external_id])
+            corporation_id = response.data[0]['corporation_id']
 
         if EveCorporation.objects.filter(external_id=corporation_id).exists():
             self.corporation = EveCorporation.objects.get(external_id=corporation_id)
@@ -289,6 +342,7 @@ class EveCharacter(EveEntity):
             self.corporation = EveCorporation.create_from_external_id(external_id=corporation_id)
         
         self.save() 
+
 
 class EveCorporation(EveEntity):
     ceo = models.OneToOneField(
@@ -612,6 +666,8 @@ class EveContract(EveEntityData):
         resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
+            if EveContract.objects.filter(contract_id=row['contract_id']).exists():
+                continue
             if 'for_corporation' in row and row['for_corporation']:
                 corporation = EveCorporation.objects.filter(
                     external_id=row['issuer_corporation_id']).exclude(ceo=None).first()
@@ -619,9 +675,9 @@ class EveContract(EveEntityData):
                     token = corporation.ceo.token
                     EveContract.create_from_esi_row(
                         row, corporation.external_id, token=token, corporation=True)
-        else:
-            EveContract.create_from_esi_row(
-                row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
+            else:
+                EveContract.create_from_esi_row(
+                    row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -722,7 +778,7 @@ class EveSkill(EveEntityData):
 
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
-        for row in data:
+        for row in data.skills:
             EveSkill.create_from_esi_row(row, entity_external_id)
 
     @staticmethod

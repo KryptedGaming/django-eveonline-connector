@@ -87,41 +87,41 @@ Skills
                 </thead>
                 <tbody>
                     {% for skill in skills %}
-                    {% if skill.group == group %}
+                    {% if skill.skill_group == group %}
                     <tr>
-                        <td>{{skill.name}}</td>
+                        <td>{{skill.skill_name}}</td>
                         <td>
-                            {% if skill.level == 0 %}
+                            {% if skill.trained_skill_level == 0 %}
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
-                            {% elif skill.level == 1 %}
+                            {% elif skill.trained_skill_level == 1 %}
                             <div class="rating ratingOn"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
-                            {% elif skill.level == 2 %}
+                            {% elif skill.trained_skill_level == 2 %}
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
-                            {% elif skill.level == 3 %}
+                            {% elif skill.trained_skill_level == 3 %}
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating"></div>
                             <div class="rating"></div>
-                            {% elif skill.level == 4 %}
+                            {% elif skill.trained_skill_level == 4 %}
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating"></div>
-                            {% elif skill.level == 5 %}
+                            {% elif skill.trained_skill_level == 5 %}
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>
                             <div class="rating ratingOn"></div>

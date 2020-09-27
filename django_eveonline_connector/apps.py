@@ -13,7 +13,6 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
 
     # DO NOT EDIT 
     ESI_BAD_ASSET_CATEGORIES=[42, 43]
-    required_scopes = ['publicData']
 
     EVEWHO_CONFIG = {
         'domain': 'evewho.com'
@@ -27,15 +26,9 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
             'alliance': 'logo',
         }
     }
-
+    
     def ready(self):
-        from django.db.models.signals import m2m_changed, post_save, post_delete
-        from .signals import eve_token_type_scopes_updated, eve_token_type_save, eve_token_generate_default_token
-        from django_eveonline_connector.models import EveTokenType, EveScope
-        m2m_changed.connect(eve_token_type_scopes_updated, sender=EveTokenType)
-        post_save.connect(eve_token_type_save, sender=EveTokenType)
-        post_delete.connect(eve_token_generate_default_token, sender=EveTokenType)
-
+        from django_eveonline_connector.models import EveClient 
+        if not EveClient.objects.all().exists():
+            EveClient().save()
         
-        from django_eveonline_connector.models import EveScope 
-        self.required_scopes = EveScope.objects.filter(name__in=self.required_scopes)

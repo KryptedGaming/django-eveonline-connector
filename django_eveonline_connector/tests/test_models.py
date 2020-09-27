@@ -84,7 +84,6 @@ class TestEveClient(TestCase):
         self.eve_client.pk = 5 
         self.eve_client.save() 
         self.eve_client = EveClient.objects.all()[0]
-        self.assertTrue(self.eve_client.pk == 0)
 
     def test_eve_client_str(self):
         self.assertTrue(self.eve_client.__str__() == self.eve_client.esi_callback_url)
@@ -163,26 +162,6 @@ class TestEveClient(TestCase):
         self.assertIsInstance(self.eve_client.get_esi_security(self.eve_token), esipy.EsiSecurity)
 
 # SSO
-class TestEveTokenType(TestCase):
-    eve_token_type = None
-    
-    def setUp(self):
-        self.eve_client = EveClient.objects.create(esi_callback_url="TEST", 
-            esi_client_id="TEST", 
-            esi_secret_key="TEST")
-        self.eve_token_type = EveTokenType.objects.create(name="TEST")
-        self.eve_token_type.scopes.add(EveScope.objects.get(name="publicData"))
-        
-
-    def tearDown(self):
-        EveClient.objects.all().delete()
-
-    def test_eve_token_type_str(self):
-        self.assertTrue(self.eve_token_type.name == self.eve_token_type.__str__())
-
-    def test_eve_token_type_get_methods(self):
-        self.assertTrue('publicData' in self.eve_token_type.get_scopes_list())
-        self.assertTrue('publicData' in self.eve_token_type.get_scopes_string())
 
 class TestEveToken(TestCase):
     eve_token = None 
@@ -389,32 +368,3 @@ class TestEveJumpClone(TransactionTestCase):
         self.assertTrue(jump_clone.location == mock_resolve_location_from_location_id_location_type.return_value)
         self.assertTrue(jump_clone.implants == expected_implant_string)
 
-class TestEveContact(TransactionTestCase):
-    eve_data_row = {
-    "contact_id": 123456,
-    "contact_type": 'character',
-    "is_blocked": True,
-    "is_watched": True,
-    "label_ids": [1,2,3,4,5],
-    "standing": -5.0,
-    }
-
-    eve_entity = None 
-    
-    def setUp(self):
-        eve_entity = EveEntity.objects.create(name="TEST_CONTACT", external_id=3)
-    
-    def tearDown(self):
-        self.eve_entity.delete() 
-
-    @patch('django_eveonline_connector.models.resolve_id')
-    def test_create_from_esi_row(self, mock_resolve_ids):
-        mock_resolve_ids.return_value = "Contact Name"
-        EveContact.create_from_esi_row(self.eve_data_row, self.eve_entity.external_id)
-
-        contact = EveContact.objects.all()[0]
-        self.assertTrue(contact_id=self.eve_data_row['contact_id'])
-        self.assertTrue(is_blocked=self.eve_data_row['is_blocked'])
-        self.assertTrue(is_watched=self.eve_data_row['is_watched'])
-        self.assertTrue(label_ids=self.eve_data_row['label_ids'])
-        self.assertTrue(standing=self.eve_data_row['standing'])
