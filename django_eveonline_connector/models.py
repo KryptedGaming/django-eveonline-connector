@@ -204,7 +204,7 @@ These models are used for the EVE Online token system
 # TODO: remove type, all scopes added.. add scopes via fixtures 
 
 class EveScope(models.Model):
-    name = models.TextField(unique=True)
+    name = models.CharField(unique=True, max_length=128)
     required = models.BooleanField(default=False)
 
     def __str__(self):
@@ -240,8 +240,14 @@ class EveToken(models.Model):
             return "<%s:%s>" % ("Unknown Character", self.user)
 
     def valid(self):
-        if self.requested_scopes.all().difference(self.scopes.all()).count() >= 1:
-            return False 
+        for scope in self.requested_scopes.all():
+            if scope not in self.scopes.all():
+                return False 
+
+        for scope in EveScope.objects.filter(required=True):
+            if scope not in self.scopes.all():
+                return False 
+
         if self.invalidated:
             return False
         return True 
@@ -254,7 +260,7 @@ class EveToken(models.Model):
             new_token = esi_security.refresh()
         except Exception as e:
             if b"invalid_grant" in e.response:
-                self.invalidated = datetime.datetime.utcnow()
+                self.invalidated = timezone.now()
                 self.save()
                 return False    
 
@@ -827,6 +833,8 @@ class EveJournalEntry(EveEntityData):
         resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
+            if EveJournalEntry.objects.filter(external_id=row['id']).exists():
+                continue
             EveJournalEntry.create_from_esi_row(
                 row, entity_external_id, resolved_ids=resolved_ids)
 
@@ -971,3 +979,22 @@ class PrimaryEveCharacterAssociation(models.Model):
     def set_user(self):
         self.user = user
         self.save()
+
+class EveCharacterInfo(models.Model):
+    character = models.OneToOneField(EveCharacter, on_delete=models.CASCADE, related_name="info")
+    
+    # game info
+    skill_points = models.IntegerField(blank=True, null=True)
+    net_worth = models.FloatField(blank=True, null=True)
+    
+    # update statistics
+    assets_last_updated = models.DateTimeField(blank=True, null=True)
+    jump_clones_last_updated = models.DateTimeField(blank=True, null=True)
+    contacts_last_updated = models.DateTimeField(blank=True, null=True)
+    contracts_last_updated = models.DateTimeField(blank=True, null=True)
+    skills_last_updated = models.DateTimeField(blank=True, null=True)
+    journal_last_updated = models.DateTimeField(blank=True, null=True)
+    transactions_last_updated = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return self.character.name

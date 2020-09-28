@@ -1,7 +1,9 @@
 from celery import task, shared_task
 from .models import *
+from django.utils import timezone
 
 import logging
+import pytz
 logger = logging.getLogger(__name__)
 
 """
@@ -47,13 +49,17 @@ def update_affiliations():
 def update_characters():
     for eve_character in EveCharacter.objects.all():
         if eve_character.token: 
-            update_character_assets.apply_async(args=[eve_character.character_id])
-            update_character_contacts.apply_async(args=[eve_character.character_id])
-            update_character_contracts.apply_async(args=[eve_character.character_id])
-            update_character_journal.apply_async(args=[eve_character.character_id])
-            update_character_jumpclones.apply_async(args=[eve_character.character_id])
-            update_character_skills.apply_async(args=[eve_character.character_id])
-            update_character_transactions.apply_async(args=[eve_character.character_id])
+            update_character_assets.apply_async(args=[eve_character.external_id])
+            update_character_contacts.apply_async(args=[eve_character.external_id])
+            update_character_contracts.apply_async(args=[eve_character.external_id])
+            update_character_journal.apply_async(
+                args=[eve_character.external_id])
+            update_character_jumpclones.apply_async(
+                args=[eve_character.external_id])
+            update_character_skills.apply_async(
+                args=[eve_character.external_id])
+            update_character_transactions.apply_async(
+                args=[eve_character.external_id])
 
 @shared_task
 def update_corporations():
@@ -103,12 +109,19 @@ def update_character_eveentitydata(op, *args, delete=True, **kwargs):
             continue
 
         items = response.data
+
+        if len(items) == 0:
+            return []
+
         if delete:
             data_model.objects.filter(entity=character).delete()
+
         data_model.create_from_esi_response(items, character.external_id)
+        
+        return items 
 
 @shared_task
-def update_character_assets(character_id=None, *args, **kwargs):
+def update_character_assets(character_id, *args, **kwargs):
     """
     Updates all character assets from ESI.
     Highly recommended to not use this frequently, unless you absolutely need it.
@@ -117,6 +130,7 @@ def update_character_assets(character_id=None, *args, **kwargs):
     data_model = EveAsset 
     update_character_eveentitydata(
         op, *args, **kwargs, character_id=character_id, data_model=data_model)
+    
 
 @shared_task
 def update_character_jumpclones(character_id, *args, **kwargs):
@@ -124,36 +138,48 @@ def update_character_jumpclones(character_id, *args, **kwargs):
     data_model = EveJumpClone
     update_character_eveentitydata(op, *args, **kwargs, character_id=character_id, data_model=data_model)
 
+
 @shared_task 
-def update_character_contacts(*args, **kwargs):
+def update_character_contacts(character_id, *args, **kwargs):
     op = 'get_characters_character_id_contacts'
     data_model = EveContact
-    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
+    update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
 
 @shared_task
-def update_character_contracts(*args, **kwargs):
+def update_character_contracts(character_id, *args, **kwargs):
     op = 'get_characters_character_id_contracts'
     data_model = EveContract
-    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
 
 @shared_task
-def update_character_skills(*args, **kwargs):
+def update_character_skills(character_id, *args, **kwargs):
     op = 'get_characters_character_id_skills'
     data_model = EveSkill
-    update_character_eveentitydata(op, *args, **kwargs, data_model=data_model)
+    response = update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+
+    character = EveCharacter.objects.get(external_id=character_id)
+    info = EveCharacterInfo.objects.get_or_create(character=character)[0]
+    info.skill_points = response['total_sp']
+    info.save()
+    
 
 @shared_task
-def update_character_journal(*args, **kwargs):
+def update_character_journal(character_id, *args, **kwargs):
     op = 'get_characters_character_id_wallet_journal'
     data_model = EveJournalEntry
-    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
 @shared_task
-def update_character_transactions(*args, **kwargs):
+def update_character_transactions(character_id, *args, **kwargs):
     op = 'get_characters_character_id_wallet_transactions'
     data_model = EveTransaction
-    update_character_eveentitydata(op, *args, delete=False, **kwargs, data_model=data_model)
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
 """
 Helper Tasks

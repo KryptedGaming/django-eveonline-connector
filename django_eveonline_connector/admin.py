@@ -33,7 +33,15 @@ class EveScopeAdmin(admin.ModelAdmin):
     list_display = ('name', 'required')
 
 admin.site.register(EveCorporation)
-admin.site.register(EveToken)
+
+@admin.register(EveToken)
+class EveTokenAdmin(admin.ModelAdmin):
+    list_display = ('is_valid', 'evecharacter', 'user')
+    search_fields = ('evecharacter__name',)
+
+    def is_valid(self, obj):
+        return obj.valid()
+    is_valid.boolean = True
 
 @admin.register(EveCharacter)
 class EveCharacterAdmin(admin.ModelAdmin):

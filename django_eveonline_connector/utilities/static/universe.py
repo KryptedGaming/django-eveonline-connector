@@ -175,11 +175,16 @@ def resolve_location_id_to_station(location_id, lazy=False):
     if station_name:
         return station_name
 
-    logger.warning("Resolving location_id (%s) to station using ESI" % location_id)
+    if str(location_id) in cache:
+        return cache.get(str(location_id))
+
+    logger.warning(
+        "Resolving location_id (%s) to station using ESI" % location_id)
     response = get_station_id(location_id)
 
     if 'name' in response:
         station_name = response['name']
+        cache.set(str(location_id), station_name)
 
     if not station_name:
         if lazy:

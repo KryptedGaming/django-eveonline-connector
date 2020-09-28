@@ -1,7 +1,9 @@
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django_eveonline_connector.models import EveCharacter, EveSkill, PrimaryEveCharacterAssociation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django_eveonline_connector.tasks import *
 
 import logging
 logger = logging.getLogger(__name__)
@@ -50,6 +52,31 @@ def refresh_character_public(request, external_id):
     return redirect("/")
 
 @login_required
+@permission_required('django_eveonline_connector.change_evecharacter')
+def refresh_character(request, external_id):
+    if 'fields' not in request.GET:
+       return HttpResponse(status=400)
+    scopes = request.GET['fields'].split(",")
+    
+    if 'assets' in scopes:
+        update_character_assets.apply_async(args=[external_id])
+    if 'jumpclones' in scopes:
+        update_character_jumpclones.apply_async(args=[external_id])
+    if 'contacts' in scopes:
+        update_character_contacts.apply_async(args=[external_id])
+    if 'contracts' in scopes:
+        update_character_contracts.apply_async(args=[external_id])
+    if 'skills' in scopes:
+        update_character_skills.apply_async(args=[external_id])
+    if 'journal' in scopes:
+        update_character_journal.apply_async(args=[external_id])
+    if 'transactions' in scopes:
+        update_character_transactions.apply_async(args=[external_id])
+        
+    messages.info(request, f"Jobs queued to update: {scopes}")
+    return redirect('django-eveonline-connector-view-character', external_id)
+
+@login_required
 @permission_required('django_eveonline_connector.view_evecharacter', raise_exception=True)
 def list_characters(request):
     return render(request, 'django_eveonline_connector/adminlte/characters/list_characters.html', context={
@@ -63,17 +90,6 @@ def view_character(request, external_id):
     context = {}
     context['character'] = EveCharacter.objects.get(external_id=external_id)
     return render(request, 'django_eveonline_connector/adminlte/characters/view_character.html', context)
-
-
-@login_required
-@permission_required('django_eveonline_connector.change_evecharacter')
-def refresh_character(request, external_id):
-    try:
-        update_eve_character_all(external_id)
-        messages.success(request, "Character successfully updated")
-    except Exception as e:
-        messages.error(request, "Character was not updated: %s" % e)
-    return redirect('django-eveonline-connector-view-character', external_id)
 
 
 @login_required

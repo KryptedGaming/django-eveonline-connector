@@ -65,13 +65,7 @@ EVE Online - View Character
                         <li class="list-group-item">
                             <b>Skill Points</b>
                             <p class="pull-right">
-                                {{character.skillpoints.value|intcomma}}
-                            </p>
-                        </li>
-                        <li class="list-group-item">
-                            <b>Net Worth</b>
-                            <p class="pull-right">
-                                {{character.net_worth.value|intcomma}}
+                                {{character.info.skill_points|intcomma}}
                             </p>
                         </li>
                         {% if "django_discord_connector" in INSTALLED_APPS %}
@@ -89,7 +83,7 @@ EVE Online - View Character
                     </ul>
 
                     <a class="btn btn-success btn-block"
-                        href="{% url 'django-eveonline-connector-refresh-character' character.external_id %}">Refresh
+                        href="{% url 'django-eveonline-connector-refresh-character' character.external_id %}?fields=assets,jumpclones,contacts,contracts,skills,journal,transactions">Refresh
                         Character</a>
                 </div>
                 <!-- /.box-body -->

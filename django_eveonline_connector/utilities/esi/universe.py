@@ -1,5 +1,5 @@
 from django_eveonline_connector.models import EveClient, EveToken
-from django.core.cache import caches
+from django.core.cache import cache
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,13 +54,7 @@ def get_category_id(category_id):
     return EveClient.call('get_universe_categories_category_id', category_id=category_id).data
 
 def get_structure_id(structure_id, token_entity_id):
-    try:
-        cache = caches['eve_structure_cache']
-    except Exception as e:
-        cache = None 
-        logger.warning("Attempted to use cache 'eve_structure_cache' but it does not exist. Define for performance improvement.")
-    
-    if cache and str(structure_id) in cache:
+    if str(structure_id) in cache:
         return cache.get(str(structure_id))
 
     try:

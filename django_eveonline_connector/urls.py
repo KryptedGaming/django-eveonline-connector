@@ -2,11 +2,10 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, re_path
-from django_eveonline_connector.views import base, sso, character, corporation, api
-from django_eveonline_connector.views.base import EveOnlineSetupView
+from django_eveonline_connector.views import sso, character, corporation, api
 
 # SSO 
-urlpatterns += [
+urlpatterns = [
     path('sso/callback', sso.sso_callback,
          name="django-eveonline-connector-sso-callback"),
     path('sso/token/add/', sso.add_sso_token,
