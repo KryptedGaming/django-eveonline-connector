@@ -451,7 +451,7 @@ class EveAsset(EveEntityData):
     is_singleton = models.BooleanField()
     item_id = models.IntegerField()
     location_flag = models.CharField(max_length=64)
-    location_id = models.IntegerField()
+    location_id = models.BigIntegerField()
     location_type = models.CharField(max_length=64)
     quantity = models.IntegerField()
     type_id = models.IntegerField()
@@ -518,7 +518,7 @@ class EveAsset(EveEntityData):
 
 class EveJumpClone(EveEntityData):
     # ESI Data
-    location_id = models.IntegerField()
+    location_id = models.BigIntegerField()
     location_type = models.CharField(max_length=64)
     jump_clone_id = models.IntegerField()
 
@@ -742,7 +742,7 @@ class EveContract(EveEntityData):
         else:
             resolved_ids = kwargs.get('resolved_ids')
 
-        if 'corporation' in kwargs and kwargs.get('corporation'):
+        if 'corporation' in kwargs and kwargs.get('corporation') == True:
             contracts_response = EveClient.call(
                 'get_corporations_corporation_id_contracts_contract_id_items', token,
                 corporation_id=entity_external_id, contract_id=contract.contract_id)
@@ -879,7 +879,7 @@ class EveTransaction(EveEntityData):
     is_buy = models.BooleanField()
     is_personal = models.BooleanField()
     journal_ref_id = models.IntegerField()
-    location_id = models.IntegerField()
+    location_id = models.BigIntegerField()
     quantity = models.IntegerField()
     transaction_id = models.IntegerField(unique=True)
     type_id = models.IntegerField()

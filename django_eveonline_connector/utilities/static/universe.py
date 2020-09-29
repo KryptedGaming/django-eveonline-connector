@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def query_static_database(query):
+def query_static_database(query, raise_exception=False):
     """
     Executes the SQL query on the 'eve_static' database.
     If the value is not found, returns None. 
@@ -19,7 +19,10 @@ def query_static_database(query):
             return result[0]
     except django.db.utils.DatabaseError as e:
         logger.error("EVE Static Database is not properly configured, or ran into an error.")
-        logger.exception(e)
+        if raise_exception:
+            raise(e)
+        else:
+            logger.exception(e)
         
     return None 
 
