@@ -110,6 +110,15 @@ def update_character_eveentitydata(op, *args, delete=True, **kwargs):
 
         items = response.data
 
+        if 'X-Pages' in response.header and response.header['X-Pages'][0] > 1:
+            for num in range(2, response.header['X-Pages'][0]+1):
+                response = EveClient.call(
+                    op, character_id=character.external_id, page=num)
+                if response.status != 200:
+                    logger.error(response)
+                    continue 
+                items += response.data 
+
         if len(items) == 0:
             return []
 
@@ -122,14 +131,10 @@ def update_character_eveentitydata(op, *args, delete=True, **kwargs):
 
 @shared_task
 def update_character_assets(character_id, *args, **kwargs):
-    """
-    Updates all character assets from ESI.
-    Highly recommended to not use this frequently, unless you absolutely need it.
-    """
     op = 'get_characters_character_id_assets'
     data_model = EveAsset 
     update_character_eveentitydata(
-        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+        op, *args, **kwargs, character_id=character_id, delete=True, data_model=data_model)
     
 
 @shared_task

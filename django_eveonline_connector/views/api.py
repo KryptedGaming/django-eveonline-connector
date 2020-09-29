@@ -72,18 +72,18 @@ def get_transactions(request):
 # JSON Class Views
 class AssetJson(BaseDatatableView):
     model = EveAsset
-    columns = ['item', 'location_name', 'quantity']
-    order_columns = ['item', 'location_name', 'quantity']
+    columns = ['item_name', 'location_name', 'quantity']
+    order_columns = ['item_name', 'location_name', 'quantity']
 
     def filter_queryset(self, qs):
         # implement searching
         search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(item__istartswith=search)
+            qs = qs.filter(Q(item_name__istartswith=search) | Q(location_name__istartswith=search))
 
         # return character
         external_id = self.request.GET.get('external_id')
-        return qs.filter(Q(entity__external_id=external_id))
+        return qs.filter(entity__external_id=external_id, location_flag="Hangar")
 
     def prepare_results(self, qs):
         json_data = []

@@ -207,13 +207,13 @@ def resolve_location_id(location_id, token_entity_id):
     return "Unknown Location"
     
 def resolve_location_from_location_id_location_type(location_id, location_type, token_entity_id):
-    location = "Unknown Location"
+    location = f"Unknown Location ({location_id})"
     logger.debug("Resolving location_id (%s) of location_type(%s) to location_name" %
         (location_id, location_type))
     try:
         if location_type == 'station':
             location = resolve_location_id_to_station(location_id)
-        elif location_type == 'structure': 
+        elif location_type == 'item': 
             location = get_structure_id(location_id, token_entity_id)
         elif location_type == 'other':
             location = get_structure_id(location_id, token_entity_id)

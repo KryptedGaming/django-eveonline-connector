@@ -104,12 +104,17 @@ class EveClient(DjangoSingleton):
                     external_id=kwargs.get('corporation_id'))
 
                 if not eve_corporation.ceo:
-                    raise EveToken.DoesNotExist("Missing CEO Token with scopes %s for %s" % (
-                        required_scopes, eve_corporation.external_id))
+                    logger.warning(f"Missing CEO for corrporation: {eve_corporation.external_id}")
+                    return 
 
-                token_pk = eve_corporation.ceo.token.pk
-                token = EveToken.objects.get(
-                    pk=token_pk, scopes__in=required_scopes)
+                try:
+                    token_pk = eve_corporation.ceo.token.pk
+                    token = EveToken.objects.get(
+                        pk=token_pk, scopes__in=required_scopes)
+                except EveToken.DoesNotExist as e:
+                    logger.warning(e)
+                    return
+            
             else:
                 raise Exception(
                     "Attempted to make protected EsiCall without token or auto-matching keyword argument")
@@ -449,7 +454,7 @@ class EveAsset(EveEntityData):
     # ESI Data
     is_blueprint_copy = models.BooleanField()
     is_singleton = models.BooleanField()
-    item_id = models.IntegerField()
+    item_id = models.BigIntegerField()
     location_flag = models.CharField(max_length=64)
     location_id = models.BigIntegerField()
     location_type = models.CharField(max_length=64)
@@ -508,10 +513,11 @@ class EveAsset(EveEntityData):
         asset.item_type = resolve_type_id_to_category_name(asset.type_id)
 
         # Location IDs suck to resolve, we must do different things for each type
-        asset.location_name = resolve_location_from_location_id_location_type(
-            asset.location_id,
-            asset.location_type,
-            entity_external_id)
+        if asset.location_flag == "Hangar":
+            asset.location_name = resolve_location_from_location_id_location_type(
+                asset.location_id,
+                asset.location_type,
+                entity_external_id)
 
         return asset
 
@@ -645,8 +651,8 @@ class EveContract(EveEntityData):
     issuer_corporation_id = models.IntegerField()
     issuer_id = models.IntegerField()
 
-    start_location_id = models.IntegerField(blank=True, null=True)
-    end_location_id = models.IntegerField(blank=True, null=True)
+    start_location_id = models.BigIntegerField(blank=True, null=True)
+    end_location_id = models.BigIntegerField(blank=True, null=True)
     status = models.CharField(max_length=32)
     title = models.TextField(blank=True, null=True)
     type = models.CharField(max_length=16)
@@ -675,12 +681,16 @@ class EveContract(EveEntityData):
             if EveContract.objects.filter(contract_id=row['contract_id']).exists():
                 continue
             if 'for_corporation' in row and row['for_corporation']:
-                corporation = EveCorporation.objects.filter(
-                    external_id=row['issuer_corporation_id']).exclude(ceo=None).first()
-                if corporation:
-                    token = corporation.ceo.token
-                    EveContract.create_from_esi_row(
-                        row, corporation.external_id, token=token, corporation=True)
+                try: 
+                    corporation = EveCorporation.objects.filter(
+                        external_id=row['issuer_corporation_id']).exclude(ceo=None).first()
+                    if corporation:
+                        token = corporation.ceo.token
+                        EveContract.create_from_esi_row(
+                            row, corporation.external_id, token=token, corporation=True)
+                except EveToken.DoesNotExist as e:
+                    logger.warning("Failed to update corporation contracts")
+
             else:
                 EveContract.create_from_esi_row(
                     row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
@@ -744,18 +754,21 @@ class EveContract(EveEntityData):
 
         if 'corporation' in kwargs and kwargs.get('corporation') == True:
             contracts_response = EveClient.call(
-                'get_corporations_corporation_id_contracts_contract_id_items', token,
+                'get_corporations_corporation_id_contracts_contract_id_items', kwargs.get('token'),
                 corporation_id=entity_external_id, contract_id=contract.contract_id)
         else:
             contracts_response = EveClient.call(
                 'get_characters_character_id_contracts_contract_id_items',
                 character_id=entity_external_id, contract_id=contract.contract_id)
-
-        items = []
-        for item in contracts_response.data:
-            items.append("%s %s" % (
-                item['quantity'], resolve_type_id_to_type_name(item['type_id'])))
-        contract.items = "\n".join(items)
+        
+        if not contracts_response:
+            logger.warning(f"Failed to get items for contract {contract.contract_id}")
+        else:
+            items = []
+            for item in contracts_response.data:
+                items.append("%s %s" % (
+                    item['quantity'], resolve_type_id_to_type_name(item['type_id'])))
+            contract.items = "\n".join(items)
 
         contract.acceptor_name = resolved_ids[contract.acceptor_id]['name']
         contract.assignee_name = resolved_ids[contract.assignee_id]['name']
@@ -804,12 +817,12 @@ class EveSkill(EveEntityData):
 
 class EveJournalEntry(EveEntityData):
     # ESI Data
-    external_id = models.IntegerField(unique=True)
+    external_id = models.BigIntegerField(unique=True)
     amount = models.FloatField(blank=True, null=True)
     balance = models.FloatField(blank=True, null=True)
     tax = models.FloatField(blank=True, null=True)
     tax_receiver_id = models.IntegerField(blank=True, null=True)
-    context_id = models.IntegerField(blank=True, null=True)
+    context_id = models.BigIntegerField(blank=True, null=True)
     context_id_type = models.CharField(max_length=32, blank=True, null=True)
     date = models.DateTimeField()
     description = models.TextField()
@@ -878,10 +891,10 @@ class EveTransaction(EveEntityData):
     date = models.DateTimeField()
     is_buy = models.BooleanField()
     is_personal = models.BooleanField()
-    journal_ref_id = models.IntegerField()
+    journal_ref_id = models.BigIntegerField()
     location_id = models.BigIntegerField()
     quantity = models.IntegerField()
-    transaction_id = models.IntegerField(unique=True)
+    transaction_id = models.BigIntegerField(unique=True)
     type_id = models.IntegerField()
     unit_price = models.FloatField()
 
