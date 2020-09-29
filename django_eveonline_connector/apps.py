@@ -31,11 +31,3 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
         from django_eveonline_connector.models import EveClient 
         if not EveClient.objects.all().exists():
             EveClient().save()
-        
-        # check static database
-        query = "select typeName from invTypes where typeID = %s" % 1
-        from django_eveonline_connector.utilities.static.universe import query_static_database
-        try:
-            query_static_database(query, raise_exception=True)
-        except Exception as e:
-            raise Exception("EVE Static (eve_static) database is not configured correctly. See documentation.")
