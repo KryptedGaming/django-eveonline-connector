@@ -1,10 +1,9 @@
 from celery import task, shared_task
 from .models import *
-from .services.esi.assets import get_eve_character_assets
-from .services.esi.clones import get_eve_character_clones
-from .services.esi.contacts import get_eve_character_contacts
+from django.utils import timezone
 
 import logging
+import pytz
 logger = logging.getLogger(__name__)
 
 """
@@ -19,8 +18,8 @@ def update_affiliations():
     """
     character_ids = EveCharacter.objects.all().values_list('external_id', flat=True)
     affiliations = EveClient.call(
-        'post_characters_affiliation', characters=character_ids)
-        
+        'post_characters_affiliation', characters=character_ids).data
+
     for affiliation in affiliations:
         try:
             character = EveCharacter.objects.get(
@@ -45,60 +44,151 @@ def update_affiliations():
         except Exception as e:
             logger.error("Failed to update affiliation: %s" % affiliation)
             logger.exception(e)
-            
+
 @shared_task
-def update_all_characters():
+def update_characters():
     for eve_character in EveCharacter.objects.all():
-        update_character_corporation.apply_async(
-            args=[eve_character.external_id])
-
+        if eve_character.token: 
+            update_character_assets.apply_async(args=[eve_character.external_id])
+            update_character_contacts.apply_async(args=[eve_character.external_id])
+            update_character_contracts.apply_async(args=[eve_character.external_id])
+            update_character_journal.apply_async(
+                args=[eve_character.external_id])
+            update_character_jumpclones.apply_async(
+                args=[eve_character.external_id])
+            update_character_skills.apply_async(
+                args=[eve_character.external_id])
+            update_character_transactions.apply_async(
+                args=[eve_character.external_id])
 
 @shared_task
-def update_all_corporations():
+def update_corporations():
     for eve_corporation in EveCorporation.objects.all():
         update_corporation_alliance.apply_async(
             args=[eve_corporation.external_id])
         update_corporation_ceo.apply_async(
             args=[eve_corporation.external_id])
 
-
 @shared_task
-def update_all_alliances():
+def update_alliances():
     for eve_alliance in EveAlliance.objects.all():
         update_alliance_executor.apply_async(args=[eve_alliance.external_id])
 
+"""
+Character tasks 
+"""
+def update_character_eveentitydata(op, *args, delete=True, **kwargs):
+    """
+    Helper method for update_character_??? tasks.
+    They basically all follow the same behavior. 
+    """
+    if 'data_model' not in kwargs:
+        raise Exception("Must pass an EveEntityData model")
 
-"""
-EveCharacter Tasks
-These tasks are used to keep EveCharacter attributes up to date.
-"""
+    data_model = kwargs.get('data_model')
+
+    if 'character_id' in kwargs:
+        characters = EveCharacter.objects.filter(
+            external_id=kwargs.get('character_id'))
+    else:
+        characters = []
+        tokens = EveToken.objects.filter(
+            scopes__in=EveClient.get_required_scopes(op))
+        for token in tokens:
+            characters.append(token.evecharacter)
+
+    for character in characters:
+        try:
+            response = EveClient.call(op, character_id=character.external_id)
+        except Exception as e:
+            logger.exception(e)
+            continue
+
+        if response.status != 200:
+            logger.error(response)
+            continue
+
+        items = response.data
+
+        if len(items) == 0:
+            return []
+
+        if delete:
+            data_model.objects.filter(entity=character).delete()
+
+        data_model.create_from_esi_response(items, character.external_id)
+        
+        return items 
 
 @shared_task
-def update_character_corporation(character_id):
-    esi_operation = EveClient.get_esi_app(
-    ).op['get_characters_character_id'](character_id=character_id)
-    response = EveClient.get_esi_client().request(esi_operation)
+def update_character_assets(character_id, *args, **kwargs):
+    """
+    Updates all character assets from ESI.
+    Highly recommended to not use this frequently, unless you absolutely need it.
+    """
+    op = 'get_characters_character_id_assets'
+    data_model = EveAsset 
+    update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+    
 
-    corporation_id = response.data['corporation_id']
-    eve_character = EveCharacter.objects.get(external_id=character_id)
+@shared_task
+def update_character_jumpclones(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_clones'
+    data_model = EveJumpClone
+    update_character_eveentitydata(op, *args, **kwargs, character_id=character_id, data_model=data_model)
 
-    if EveCorporation.objects.filter(external_id=corporation_id).exists():
-        eve_character.corporation = EveCorporation.objects.get(
-            external_id=corporation_id)
-    else:
-        eve_character.corporation = EveCorporation.create_from_external_id(
-            corporation_id)
 
-    eve_character.save()
+@shared_task 
+def update_character_contacts(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_contacts'
+    data_model = EveContact
+    update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+
+@shared_task
+def update_character_contracts(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_contracts'
+    data_model = EveContract
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
+
+
+@shared_task
+def update_character_skills(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_skills'
+    data_model = EveSkill
+    response = update_character_eveentitydata(
+        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+
+    character = EveCharacter.objects.get(external_id=character_id)
+    info = EveCharacterInfo.objects.get_or_create(character=character)[0]
+    info.skill_points = response['total_sp']
+    info.save()
+    
+
+@shared_task
+def update_character_journal(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_wallet_journal'
+    data_model = EveJournalEntry
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
+
+@shared_task
+def update_character_transactions(character_id, *args, **kwargs):
+    op = 'get_characters_character_id_wallet_transactions'
+    data_model = EveTransaction
+    update_character_eveentitydata(
+        op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
 """
-EveCorporation Tasks
-These tasks are used to keep EveCorporation attributes up to date.
+Helper Tasks
 """
-
-
 @shared_task
 def update_corporation_alliance(corporation_id):
+    """
+    Legacy method that will be deprecated. Use update_affiliations().
+    """
     esi_operation = EveClient.get_esi_app(
     ).op['get_corporations_corporation_id'](corporation_id=corporation_id)
     response = EveClient.get_esi_client().request(esi_operation)
@@ -119,7 +209,6 @@ def update_corporation_alliance(corporation_id):
             alliance_id)
 
     eve_corporation.save()
-
 
 @shared_task
 def update_corporation_ceo(corporation_id):
@@ -145,12 +234,6 @@ def pull_corporation_roster(corporation_id):
             EveCharacter.create_from_external_id(character)
         except Exception as e:
             logger.warning("Skipping %s in corporation roster" % character)
-
-"""
-EveAlliance Tasks
-These tasks are used to keep EveAlliance attributes up to date.
-"""
-
 
 @shared_task
 def update_alliance_executor(alliance_id):

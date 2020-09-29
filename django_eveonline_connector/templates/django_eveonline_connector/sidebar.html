@@ -5,14 +5,14 @@
             <i class="fa fa-angle-left pull-right"></i>
         </span>
     </a>
-    {% if perms.django_eveonline_connector.view_evecharacter %}
+    
     <ul class="treeview-menu">
+        {% if perms.django_eveonline_connector.view_evecharacter %}
         <li><a href="{% url 'django-eveonline-connector-characters-view' %}"><i class="fa fa-user"></i>Characters</a></li>
+        {% endif %}
+        {% if perms.django_eveonline_connector.view_evecorporation %}
+        <li><a href="{% url 'django-eveonline-connector-corporations-view' %}"><i class="fa fa-building-o"></i>Corporations</a></li>
+        {% endif %}
     </ul>
-    {% else %}
-    <ul class="treeview-menu">
-        <li><a href="#"><i class="fa fa-user"></i>No Access</a></li>
-    </ul>
-    {% endif %}
     
 </li>

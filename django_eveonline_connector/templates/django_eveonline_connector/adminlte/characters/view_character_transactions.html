@@ -1,0 +1,47 @@
+{% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
+
+{% block header %}
+Transactions
+{% endblock %}
+
+{% block description %}
+{{character.name}}
+{% endblock %}
+
+{% block tab_content %}
+<table class="datatable table table-bordered table-hover">
+    <thead>
+        <th class="col-lg-2 col-md-2 col-xs-1">Client</th>
+        <th class="col-lg-2 col-md-2 col-xs-1">Item</th>
+        <th class="col-lg-2 col-md-2 col-xs-1">Quantity</th>
+        <th class="col-lg-3 col-md-3 col-xs-1">Unit Price</th>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+            'serverSide': true,
+            "ajax": "{% url 'django-eveonline-connector-api-transactions' %}?external_id={{character.external_id}}"
+        })
+    })
+</script>
+<script>
+    $(document).ready(function () {
+        $('#transactions').addClass('active');
+    });
+</script>
+
+{% endblock %}

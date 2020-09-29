@@ -5,7 +5,6 @@ Django EVE Online Connector is a simple Django application that adds models, url
 1. Add `django_eveonline_connector` to your INSTALLED_APPS
 2. Include the django_eveonline_connector URLs in your urls.py
 3. Run `python3 manage.py migrate` to create the django_eveonline_connector models
-4. Run `python3 manage.py loaddata initial_scopes` to load the initial ESI scopes
 
 # Static Database
 The static database is highly recommended, without this many services will be hamstringed by ESI. We recommend the SQLLite database from FuzzWorks. 
@@ -31,7 +30,7 @@ DATABASES = {
 | URL Name | Description |
 | ------------- | ------------- |
 |  django-eveonline-connector-sso-callback   | The callback url for SSO tokens (`sso/callback`)  |
-|  django-eveonline-connector-sso-token-add  | Redirects users to the SSO login for EVE Online   |
+|  django-eveonline-connector-sso-token-type-select  | Redirects users to the SSO login for EVE Online   |
 |  django-eveonline-connector-sso-token-remove  | Removes an SSO token (expects kwarg pk)  |
 
 # Provided Celery Tasks
