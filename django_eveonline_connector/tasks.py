@@ -45,6 +45,7 @@ def update_affiliations():
             logger.error("Failed to update affiliation: %s" % affiliation)
             logger.exception(e)
 
+@shared_task
 def update_tokens():
     for token in EveToken.objects.all():
         token.refresh()
