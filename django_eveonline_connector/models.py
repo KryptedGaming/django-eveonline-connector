@@ -244,6 +244,7 @@ class EveToken(models.Model):
         except Exception as e:
             return "<%s:%s>" % ("Unknown Character", self.user)
 
+    @property
     def valid(self):
         for scope in self.requested_scopes.all():
             if scope not in self.scopes.all():
@@ -992,6 +993,9 @@ class PrimaryEveCharacterAssociation(models.Model):
     def set_user(self):
         self.user = user
         self.save()
+
+    def get_related_characters(self):
+        return EveCharacter.objects.filter(token__in=EveToken.objects.filter(user=self.user)).exclude(external_id=self.character.external_id)
 
 class EveCharacterInfo(models.Model):
     character = models.OneToOneField(EveCharacter, on_delete=models.CASCADE, related_name="info")

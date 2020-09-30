@@ -40,7 +40,7 @@ class EveTokenAdmin(admin.ModelAdmin):
     search_fields = ('evecharacter__name',)
 
     def is_valid(self, obj):
-        return obj.valid()
+        return obj.valid
     is_valid.boolean = True
 
 @admin.register(EveCharacter)

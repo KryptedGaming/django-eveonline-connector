@@ -1,0 +1,101 @@
+{% extends "django_eveonline_connector/adminlte/corporations/view_corporation.html" %}
+
+{% block header %}
+Roster
+{% endblock %}
+
+{% block description %}
+{{corporation.name}}
+{% endblock %}
+
+{% block tab_content %}
+<div class="box box-success box-solid">
+    <div class="box-header">
+        <h3 class="box-title">Character Roster</h3>
+    </div>
+    <div class="box-body">
+        <div class="dataTables_wrapper form-inline dt-bootstrap">
+            <table class="table table-bordered table-striped dataTable">
+                <thead>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Character</th>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Alternate Characters</th>
+                </thead>
+                <tbody>
+                    {% for character in characters %}
+                    <tr>
+                        <td>
+                            <img src="https://imageserver.eveonline.com/Character/{{character.character.external_id}}_64.jpg" class="img-circle" alt="Avatar"
+                                width="32px" title="{{character.character.name}}">
+                            {{character.character.name}}
+                        </td>
+                        <td>
+                            {% for character in character.get_related_characters %}
+                            <img src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar" width="32px" title="{{character.name}}">
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="box box-danger box-solid">
+    <div class="box-header">
+        <h3 class="box-title">Token Issues</h3>
+    </div>
+    <div class="box-body">
+        <div class="dataTables_wrapper form-inline dt-bootstrap">
+            <table class="table table-bordered table-striped dataTable">
+                <thead>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Character</th>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Status</th>
+                </thead>
+                <tbody>
+                    {% for character in unauthorized_characters %}
+                    <tr>
+                        <td>
+                            <img src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar"
+                                width="32px" title="{{character.name}}">
+                            {{character.name}}
+                        </td>
+                        {% if character.token and not character.token.valid %}
+                        <td>Invalid Token</td>
+                        {% elif not character.token %}
+                        <td>Missing Token</td>
+                        {% else %}
+                        <td>Unknown Reason</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+        })
+    })
+</script>
+<script>
+    $(document).ready(function () {
+        $('#r').addClass('active');
+    });
+</script>
+
+{% endblock %}

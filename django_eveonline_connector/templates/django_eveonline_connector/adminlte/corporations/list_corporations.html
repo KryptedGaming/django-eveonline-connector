@@ -34,7 +34,7 @@ EVE Online - Corporations
             {% for corporation in corporations %}
             <tr>
                 <td>
-                    {{corporation.name}}
+                    <a href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">{{corporation.name}}</a>
                 </td>
 
                 <td>
