@@ -363,6 +363,9 @@ class EveCorporation(EveEntity):
     alliance = models.ForeignKey(
         "EveAlliance", blank=True, null=True, on_delete=models.SET_NULL)
 
+    track_corporation = models.BooleanField(default=False)
+    track_characters = models.BooleanField(default=False)
+
     @staticmethod
     def create_from_external_id(external_id):
         response = EveClient.call(

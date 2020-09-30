@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @permission_required('django_eveonline_connector.view_evecorporation', raise_exception=True)
 def view_corporations(request):
     return render(request, 'django_eveonline_connector/adminlte/corporations/list_corporations.html', context={
-        'corporations': EveCorporation.objects.all()
+        'corporations': EveCorporation.objects.filter(track_corporation=True)
     })
 
 
