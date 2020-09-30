@@ -45,6 +45,22 @@ def update_affiliations():
             logger.error("Failed to update affiliation: %s" % affiliation)
             logger.exception(e)
 
+def update_tokens():
+    for token in EveToken.objects.all():
+        token.refresh()
+
+    for token in EveToken.objects.all():
+        if token.valid and token.invalidated:
+            token.invalidated = None 
+            token.save() 
+        elif not token.valid and not token.invalidated:
+            token.invalidated = timezone.now()
+            token.save()
+        elif token.invalidated:
+            time_passed = timezone.now() - token.invalidated
+            if time_passed.days > 7:
+                token.delete()
+
 @shared_task
 def update_characters():
     for eve_character in EveCharacter.objects.all():
