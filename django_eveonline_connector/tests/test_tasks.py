@@ -1,11 +1,24 @@
-from django_eveonline_connector.tasks import update_tokens
-from django_eveonline_connector.models import EveToken, EveScope, EveClient
+from django_eveonline_connector.tasks import update_tokens, pull_corporation_roster
+from django_eveonline_connector.models import EveToken, EveScope, EveClient, EveCharacter, EveCorporation
 from django.test import TestCase
 from datetime import timedelta
 from django.utils import timezone
 import pytz
 from unittest.mock import patch
 
+class MockResponseObject():
+    def __init__(self, status_code, data):
+        self.status_code = status_code 
+        self.data = data
+
+def mock_update_corporations_for_pull_test():
+    corporation = EveCorporation.objects.get_or_create(external_id=200, name="DUMMY CORPORATION")[0]
+    character_2 = EveCharacter.objects.get(external_id=2)
+    character_4 = EveCharacter.objects.get(external_id=4)
+    character_2.corporation = corporation
+    character_4.corporation = corporation
+    character_2.save()
+    character_4.save()
 class UpdateTokenTest(TestCase):
     def setUp(self):
         self.client = EveClient.objects.create(esi_callback_url="TEST",
@@ -56,3 +69,28 @@ class UpdateTokenTest(TestCase):
         token.save()
         update_tokens()
         self.assertTrue(EveToken.objects.all().count() == 0)
+
+class PullCorporationRoster(TestCase):
+    def setUp(self):
+        self.corporation = EveCorporation.objects.create(external_id=100, name="TEST CORPORATION")
+        EveCharacter.objects.create(
+            external_id=1, corporation=self.corporation)
+        EveCharacter.objects.create(
+            external_id=2, corporation=self.corporation)
+        EveCharacter.objects.create(
+            external_id=3, corporation=self.corporation)
+        EveCharacter.objects.create(
+            external_id=4, corporation=self.corporation)
+        EveCharacter.objects.create(
+            external_id=5, corporation=self.corporation)
+
+    @patch('django_eveonline_connector.tasks.EveClient.call')
+    @patch('django_eveonline_connector.models.EveCharacter.update_character_corporation')
+    def test_pull_roster(self, mock_character_update, mock_eve_client):
+        mock_character_update.return_value = MockResponseObject(status_code=200, data=[200])
+        mock_character_update.side_effect = mock_update_corporations_for_pull_test()
+        mock_eve_client.return_value = MockResponseObject(status_code=200, data=[1,3,5])
+        pull_corporation_roster(self.corporation.external_id)
+        characters = EveCharacter.objects.filter(corporation=self.corporation)
+        character_ids = characters.values_list('external_id', flat=True)
+        self.assertTrue(list(character_ids) == [1,3,5])

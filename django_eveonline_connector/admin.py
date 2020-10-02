@@ -35,7 +35,7 @@ class EveScopeAdmin(admin.ModelAdmin):
 @admin.register(EveCorporation)
 class EveCorporationAdmin(admin.ModelAdmin):
     list_display = ('name', 'ceo', 'track_corporation', 'track_characters')
-    search_fields = ('name', 'ceo')
+    search_fields = ('name', 'ceo__name')
 
 @admin.register(EveToken)
 class EveTokenAdmin(admin.ModelAdmin):

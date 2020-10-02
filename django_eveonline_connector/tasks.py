@@ -1,6 +1,7 @@
 from celery import task, shared_task
 from .models import *
 from django.utils import timezone
+from django.db.models import Q
 
 import logging
 import pytz
@@ -47,6 +48,7 @@ def update_affiliations():
 
 @shared_task
 def update_tokens():
+    EveToken.objects.filter(evecharacter=None).delete()
     for token in EveToken.objects.all():
         token.refresh()
 
@@ -65,26 +67,53 @@ def update_tokens():
 @shared_task
 def update_characters():
     for eve_character in EveCharacter.objects.all():
-        if eve_character.token: 
-            update_character_assets.apply_async(args=[eve_character.external_id])
-            update_character_contacts.apply_async(args=[eve_character.external_id])
-            update_character_contracts.apply_async(args=[eve_character.external_id])
+        if eve_character.token and eve_character.token.valid and eve_character.corporation.track_characters: 
+            logger.info(f"Queueing batch update tasks for {eve_character.name}")
+            update_character_assets.apply_async(
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
+            update_character_contacts.apply_async(
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
+            update_character_contracts.apply_async(
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
             update_character_journal.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
             update_character_jumpclones.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
             update_character_skills.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
+                )
             update_character_transactions.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id], 
+                countdown=((eve_character.pk*10) % 300)
+                )
+        elif not eve_character.token:
+            eve_character.delete()
 
 @shared_task
 def update_corporations():
     for eve_corporation in EveCorporation.objects.all():
-        update_corporation_alliance.apply_async(
-            args=[eve_corporation.external_id])
-        update_corporation_ceo.apply_async(
-            args=[eve_corporation.external_id])
+        if eve_corporation.evecharacter_set.all().count() == 0:
+            eve_corporation.delete()
+            continue
+        if eve_corporation.track_corporation:
+            pull_corporation_roster.apply_async(args=[eve_corporation.external_id])
+            update_corporation_alliance.apply_async(
+                args=[eve_corporation.external_id])
+            update_corporation_ceo.apply_async(
+                args=[eve_corporation.external_id])
+        else:
+            logger.info(f"Skipping corporation update for {eve_corporation.name}: Not Tracked")
 
 @shared_task
 def update_alliances():
@@ -243,7 +272,7 @@ def update_corporation_ceo(corporation_id):
     if EveCharacter.objects.filter(external_id=ceo_id).exists():
         eve_corporation.ceo = EveCharacter.objects.get(external_id=ceo_id)
     else:
-        eve_corporation.ceo = EveCharacter.create_from_external_id(ceo_id)
+       logger.info(f"Skipping CEO update for {eve_corporation.external_id}: CEO not in database")
 
     eve_corporation.save()
 
@@ -251,11 +280,17 @@ def update_corporation_ceo(corporation_id):
 def pull_corporation_roster(corporation_id):
     token = EveToken.objects.filter(evecharacter__corporation__external_id=corporation_id).first()
     roster = EveClient.call('get_corporations_corporation_id_members', token=token, corporation_id=corporation_id)
-    for character in roster:
-        try:
+    members_to_update = EveCharacter.objects.filter(~Q(external_id__in=roster.data))
+    ids_that_exist = EveCharacter.objects.filter(external_id__in=roster.data).values_list('external_id', flat=True)
+
+    for character in roster.data:
+        if character not in ids_that_exist:
             EveCharacter.create_from_external_id(character)
-        except Exception as e:
-            logger.warning("Skipping %s in corporation roster" % character)
+        else:
+            logger.info(f"skipping {character} due to already existing")
+
+    for member in members_to_update:
+        member.update_character_corporation()
 
 @shared_task
 def update_alliance_executor(alliance_id):
