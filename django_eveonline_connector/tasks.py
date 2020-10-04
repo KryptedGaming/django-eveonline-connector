@@ -65,38 +65,38 @@ def update_tokens():
                 token.delete()
 
 @shared_task
-def update_characters():
-    counter = 0
+def update_characters(jitter_max=1800):
     for eve_character in EveCharacter.objects.all():
         if eve_character.token and eve_character.token.valid and eve_character.corporation.track_characters: 
             logger.info(f"Queueing batch update tasks for {eve_character.name}")
+            jitter = (eve_character.pk*10) % jitter_max
             update_character_assets.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_contacts.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_contracts.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_journal.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_jumpclones.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_skills.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
             update_character_transactions.apply_async(
                 args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
+                countdown=jitter)
                 
 
 @shared_task
