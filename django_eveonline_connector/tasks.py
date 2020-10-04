@@ -71,25 +71,32 @@ def update_characters():
         if eve_character.token and eve_character.token.valid and eve_character.corporation.track_characters: 
             logger.info(f"Queueing batch update tasks for {eve_character.name}")
             update_character_assets.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_contacts.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_contracts.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_journal.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_jumpclones.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_skills.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
             update_character_transactions.apply_async(
-                args=[eve_character.external_id])
+                args=[eve_character.external_id],
+                countdown=((eve_character.pk*10) % 300)
                 
 
 @shared_task
