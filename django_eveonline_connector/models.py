@@ -6,10 +6,12 @@ from django.contrib.auth.models import User
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
 from django_singleton_admin.models import DjangoSingleton
+from django_eveonline_connector.exceptions import EveMissingScopeException
 import datetime
 import logging
 import json
 import traceback
+import pyswagger
 from django.db.models import Q
 logger = logging.getLogger(__name__)
 app_config = apps.get_app_config('django_eveonline_connector')
@@ -96,37 +98,50 @@ class EveClient(DjangoSingleton):
         if required_scopes:
             if 'token' in kwargs:
                 token = kwargs.get('token')
+                for scope in required_scopes:
+                    if scope not in token.scopes.all():
+                        raise EveMissingScopeException(f"EveClient was passed a token that is missing the required scopes: {scope}")
+
             elif 'character_id' in kwargs:
-                token = EveToken.objects.get(evecharacter__external_id=kwargs.get(
-                    'character_id'), scopes__in=required_scopes)
+                try:
+                    token = EveToken.objects.get(evecharacter__external_id=kwargs.get(
+                        'character_id'), scopes__in=required_scopes)
+                except EveToken.DoesNotExist as e:
+                    raise EveMissingScopeException(
+                        f"EveClient was passed a character_id that does not have the proper token: {required_scopes}")
             elif 'corporation_id' in kwargs:
                 eve_corporation = EveCorporation.objects.get(
                     external_id=kwargs.get('corporation_id'))
 
                 if not eve_corporation.ceo:
-                    logger.warning(f"Missing CEO for corrporation: {eve_corporation.external_id}")
-                    return 
+                    raise EveMissingScopeException(
+                        'EveClient was passed a corporation_id that does not have a CEO')
 
                 try:
                     token_pk = eve_corporation.ceo.token.pk
                     token = EveToken.objects.get(
                         pk=token_pk, scopes__in=required_scopes)
                 except EveToken.DoesNotExist as e:
-                    logger.warning(e)
-                    return
+                    raise EveMissingScopeException(
+                        'EveClient was passed a corporation_id that does not have the proper CEO token')
             
             else:
                 raise Exception(
-                    "Attempted to make protected EsiCall without token or auto-matching keyword argument")
+                    "Attempted to make protected EsiCall without valid token or auto-matching keyword argument")
         else:
             token = None
 
         if token:
             token.refresh()
-            return EveClient.get_esi_client(token=token).request(operation(**kwargs), raise_on_error=raise_exception)
+            request = EveClient.get_esi_client(token=token).request(
+                operation(**kwargs), raise_on_error=raise_exception)
         else:
-            return EveClient.get_esi_client().request(operation(**kwargs), raise_on_error=raise_exception)
+            request = EveClient.get_esi_client().request(operation(**kwargs), raise_on_error=raise_exception)
+        
+        if request.status not in [200, 204]:
+            logger.warning(f"Failed ({request.status}) ESI call '{op}' with {kwargs}. Response: {request.data}")
 
+        return request 
     @staticmethod
     def get_required_scopes(op):
         operation = EveClient.get_esi_app().op[op]
@@ -379,7 +394,6 @@ class EveCorporation(EveEntity):
 
         return eve_corporation
 
-
 class EveAlliance(EveEntity):
     executor = models.OneToOneField(
         "EveCorporation", blank=True, null=True, on_delete=models.SET_NULL)
@@ -425,9 +439,12 @@ class EveEntityData(models.Model):
                 external_id=entity_external_id)
             db_object.save()
         except Exception as e:
-            logger.warning("Failed to create %s from ESI data row: %s." % (
-                cls.__name__, data_row))
-            logger.exception(e)
+            message = (
+                f"Failed to create {cls.__name__} from ESI data row: {data_row}.\n"
+                f"Failed for entity {entity_external_id}\n"
+            )
+            logger.warning(message)
+            logger.error(e, exc_info=True)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -515,6 +532,10 @@ class EveAsset(EveEntityData):
         # Use the static database to resolve EVE Model IDs
         asset.item_name = resolve_type_id_to_type_name(asset.type_id)
         asset.item_type = resolve_type_id_to_category_name(asset.type_id)
+
+        if asset.category_id in EveAsset.get_bad_asset_category_ids():
+            asset.location_name = "Unresolved Location"
+            return asset # skip resolving of location
 
         # Location IDs suck to resolve, we must do different things for each type
         if asset.location_flag == "Hangar":
@@ -669,7 +690,7 @@ class EveContract(EveEntityData):
     acceptor_type = models.CharField(max_length=32, choices=id_types)
     assignee_type = models.CharField(max_length=32, choices=id_types)
     issuer_type = models.CharField(max_length=64, choices=id_types)
-    items = models.TextField()
+    items = models.TextField(null=True)
 
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
@@ -682,20 +703,7 @@ class EveContract(EveEntityData):
         resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
-            if EveContract.objects.filter(contract_id=row['contract_id']).exists():
-                continue
-            if 'for_corporation' in row and row['for_corporation']:
-                try: 
-                    corporation = EveCorporation.objects.filter(
-                        external_id=row['issuer_corporation_id']).exclude(ceo=None).first()
-                    if corporation:
-                        token = corporation.ceo.token
-                        EveContract.create_from_esi_row(
-                            row, corporation.external_id, token=token, corporation=True)
-                except EveToken.DoesNotExist as e:
-                    logger.warning("Failed to update corporation contracts")
-
-            else:
+            if not EveContract.objects.filter(contract_id=row['contract_id']).exists():
                 EveContract.create_from_esi_row(
                     row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
 
@@ -756,17 +764,13 @@ class EveContract(EveEntityData):
         else:
             resolved_ids = kwargs.get('resolved_ids')
 
-        if 'corporation' in kwargs and kwargs.get('corporation') == True:
-            contracts_response = EveClient.call(
-                'get_corporations_corporation_id_contracts_contract_id_items', kwargs.get('token'),
-                corporation_id=entity_external_id, contract_id=contract.contract_id)
-        else:
-            contracts_response = EveClient.call(
-                'get_characters_character_id_contracts_contract_id_items',
-                character_id=entity_external_id, contract_id=contract.contract_id)
-        
+
+        contracts_response = EveClient.call(
+            'get_characters_character_id_contracts_contract_id_items',
+            character_id=entity_external_id, contract_id=contract.contract_id)
+    
         if not contracts_response:
-            logger.warning(f"Failed to get items for contract {contract.contract_id}")
+            items = None 
         else:
             items = []
             for item in contracts_response.data:
@@ -955,19 +959,102 @@ class EveTransaction(EveEntityData):
         transaction.item_name = resolve_type_id_to_type_name(
             transaction.type_id)
 
-        if resolve_location_from_location_id_location_type(transaction.location_id, 'station', entity_external_id) == 'Unknown Location':
-            transaction.location_name = resolve_location_from_location_id_location_type(
-                transaction.location_id, 'other', entity_external_id)
-        else:
+        try:
             transaction.location_name = resolve_location_from_location_id_location_type(
                 transaction.location_id, 'station', entity_external_id)
+        except Exception as e:
+            transaction.location_name = resolve_location_from_location_id_location_type(
+                transaction.location_id, 'other', entity_external_id)
         
         if not transaction.location_name:
             transaction.location_name = "Unknown Location"
 
         return transaction
 
+"""
+Other EVE Models
+"""
+class EveStructure(EveEntityData):
+    # Base ESI Data
+    corporation_id = models.BigIntegerField()
+    fuel_expires = models.DateTimeField(null=True)
+    next_reinforce_apply = models.DateTimeField(null=True)
+    next_reinforce_hour = models.BigIntegerField(null=True)
+    next_reinforce_weekday = models.BigIntegerField(null=True)
+    profile_id = models.BigIntegerField()
+    reinforce_hour = models.BigIntegerField()
+    reinforce_weekday = models.BigIntegerField(null=True)
+    services = models.TextField(null=True)
+    state = models.CharField(max_length=64)
+    state_timer_end = models.DateTimeField(null=True)
+    state_timer_start = models.DateTimeField(null=True)
+    structure_id = models.BigIntegerField()
+    system_id = models.BigIntegerField()
+    type_id = models.BigIntegerField()
+    unanchors_at = models.DateTimeField(null=True)
 
+    # Additional ESI Data
+    owner_id = models.BigIntegerField()
+    solar_system_id = models.BigIntegerField()
+    type_id = models.BigIntegerField(null=True)
+    name = models.CharField(max_length=256)
+
+    @property
+    def fuel_expires_soon(self):
+        if (self.fuel_expires - timezone.now()).days < 7:
+            return True
+        return False
+
+    @property
+    def reinforcement_time(self):
+        return timezone.now().replace(hour=0, minute=0, second=0,
+                               microsecond=0) + datetime.timedelta(hours=self.reinforce_hour)
+
+    def __str__(self):
+        if not self.name:
+            self.name = "Unknown Name"
+        return f"{self.name}"
+
+
+    @staticmethod
+    def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
+        for row in data:
+            if EveStructure.objects.filter(structure_id=row['structure_id']).exists():
+                EveStructure.objects.filter(structure_id=row['structure_id']).delete()
+            EveStructure.create_from_esi_row(row, entity_external_id)
+
+    @staticmethod
+    def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
+        logger.info("Creating EVE Structure")
+        structure = EveStructure()
+        for key in data_row.keys():
+            try:
+                if type(data_row[key]) == pyswagger.primitives._time.Datetime:
+                    data_row[key] = data_row[key].to_json()
+                setattr(structure, str(key), data_row[key])
+            except AttributeError:
+                logger.error(f"Encountered unknown attribute {key} for EveStructure")
+
+        additional_info = get_structure(
+            data_row['structure_id'], entity_external_id).data
+
+        for key in additional_info.keys():
+            try:
+                setattr(structure, str(key), additional_info[key])
+            except AttributeError:
+                logger.error(
+                    f"Encountered unknown attribute {key} for EveStructure")
+
+        return structure
+
+    class Meta:
+        permissions = [
+            ('bypass_corporation_view_requirements',
+             "Can view a corporation's structures regardless of current membership"),
+        ]
+
+        
+            
 """
 EVE Connector Models
 Models for EVE Connector functionality 
