@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.conf import settings 
 from django.apps import apps 
 from django import forms
-from django_eveonline_connector.models import EveClient, EveScope, EveCharacter, EveToken, EveCorporation, EveAlliance
+from django_eveonline_connector.models import EveClient, EveScope, EveCharacter, EveToken, EveCorporation, EveAlliance, EveStructure
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
@@ -70,3 +70,5 @@ class EveCharacterAdmin(admin.ModelAdmin):
         else:
             return None 
     get_user.short_description = "User"
+
+admin.site.register(EveStructure)

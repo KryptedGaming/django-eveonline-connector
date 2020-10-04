@@ -66,39 +66,31 @@ def update_tokens():
 
 @shared_task
 def update_characters():
+    counter = 0
     for eve_character in EveCharacter.objects.all():
         if eve_character.token and eve_character.token.valid and eve_character.corporation.track_characters: 
             logger.info(f"Queueing batch update tasks for {eve_character.name}")
             update_character_assets.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_contacts.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_contracts.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_journal.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_jumpclones.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_skills.apply_async(
-                args=[eve_character.external_id],
-                countdown=((eve_character.pk*10) % 300)
-                )
+                args=[eve_character.external_id])
+                
             update_character_transactions.apply_async(
-                args=[eve_character.external_id], 
-                countdown=((eve_character.pk*10) % 300)
-                )
-        elif not eve_character.token:
-            eve_character.delete()
+                args=[eve_character.external_id])
+                
 
 @shared_task
 def update_corporations():
@@ -120,60 +112,49 @@ def update_alliances():
     for eve_alliance in EveAlliance.objects.all():
         update_alliance_executor.apply_async(args=[eve_alliance.external_id])
 
+@shared_task
+def update_structures():
+    for eve_corporation in EveCorporation.objects.filter(track_corporation=True):
+        try:
+            update_corporation_eveentitydata(
+                'corporations_corporation_id_structures', EveStructure, eve_corporation.external_id)
+        except Exception as e:
+            logger.error(e)
 """
 Character tasks 
 """
-def update_character_eveentitydata(op, *args, delete=True, **kwargs):
+def update_character_eveentitydata(op, data_model, character_id, delete=True):
     """
     Helper method for update_character_??? tasks.
     They basically all follow the same behavior. 
     """
-    if 'data_model' not in kwargs:
-        raise Exception("Must pass an EveEntityData model")
+    character = EveCharacter.objects.get(external_id=character_id)
 
-    data_model = kwargs.get('data_model')
+    response = EveClient.call(op, character_id=character.external_id)
 
-    if 'character_id' in kwargs:
-        characters = EveCharacter.objects.filter(
-            external_id=kwargs.get('character_id'))
-    else:
-        characters = []
-        tokens = EveToken.objects.filter(
-            scopes__in=EveClient.get_required_scopes(op))
-        for token in tokens:
-            characters.append(token.evecharacter)
+    if response.status != 200:
+        logger.error(f"Failed to batch update {data_model} for {character_id}: {response.header} {response.data}")
+        return
 
-    for character in characters:
-        try:
-            response = EveClient.call(op, character_id=character.external_id)
-        except Exception as e:
-            logger.exception(e)
-            continue
+    items = response.data
 
-        if response.status != 200:
-            logger.error(response)
-            continue
+    if 'X-Pages' in response.header and response.header['X-Pages'][0] > 1:
+        for num in range(2, response.header['X-Pages'][0]+1):
+            response = EveClient.call(
+                op, character_id=character.external_id, page=num)
+            if response.status != 200:
+                continue 
+            items += response.data 
 
-        items = response.data
+    if len(items) == 0:
+        return []
 
-        if 'X-Pages' in response.header and response.header['X-Pages'][0] > 1:
-            for num in range(2, response.header['X-Pages'][0]+1):
-                response = EveClient.call(
-                    op, character_id=character.external_id, page=num)
-                if response.status != 200:
-                    logger.error(response)
-                    continue 
-                items += response.data 
+    if delete:
+        data_model.objects.filter(entity=character).delete()
 
-        if len(items) == 0:
-            return []
-
-        if delete:
-            data_model.objects.filter(entity=character).delete()
-
-        data_model.create_from_esi_response(items, character.external_id)
-        
-        return items 
+    data_model.create_from_esi_response(items, character.external_id)
+    
+    return items 
 
 @shared_task
 def update_character_assets(character_id, *args, **kwargs):
@@ -231,6 +212,47 @@ def update_character_transactions(character_id, *args, **kwargs):
     data_model = EveTransaction
     update_character_eveentitydata(
         op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
+
+"""
+Corporatoin Tasks 
+"""
+
+
+def update_corporation_eveentitydata(op, data_model, corporation_id, delete=True):
+    """
+    Helper method for update_corporation_??? tasks.
+    They basically all follow the same behavior. 
+    """
+
+    corporation = EveCorporation.objects.get(external_id=corporation_id)
+
+    response = EveClient.call(op, corporation_id=corporation.external_id)
+
+    if response.status != 200:
+        logger.error(
+            f"Failed to batch update {data_model} for {character_id}: {response.header} {response.data}")
+        return
+
+
+    items = response.data
+
+    if 'X-Pages' in response.header and response.header['X-Pages'][0] > 1:
+        for num in range(2, response.header['X-Pages'][0]+1):
+            response = EveClient.call(
+                op, corporation_id=corporation.external_id, page=num)
+            if response.status != 200:
+                continue
+            items += response.data
+
+    if len(items) == 0:
+        return []
+
+    if delete:
+        data_model.objects.filter(entity=corporation).delete()
+
+    data_model.create_from_esi_response(items, corporation.external_id)
+
+    return items
 
 """
 Helper Tasks

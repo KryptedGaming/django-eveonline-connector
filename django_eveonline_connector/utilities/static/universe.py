@@ -1,5 +1,6 @@
 from django.db import connections
 from django_eveonline_connector.utilities.esi.universe import *
+from django_eveonline_connector.exceptions import EveDataResolutionError
 from django.db.utils import ConnectionDoesNotExist, OperationalError
 import django.db.utils
 import logging
@@ -26,9 +27,10 @@ def query_static_database(query, raise_exception=False):
         
     return None 
 
-def resolve_type_id_to_type_name(type_id, lazy=False):
+def resolve_type_id_to_type_name(type_id, raise_exception=True):
     """
-    Resolves an EVE Online type_id to type_name, using the static database. 
+    Resolves an EVE Online type_id to type_name. Falls back to ESI if not found in static database.
+
     Returns None if not found.
     """
     query = "select typeName from invTypes where typeID = %s" % type_id
@@ -38,17 +40,15 @@ def resolve_type_id_to_type_name(type_id, lazy=False):
         return type_name 
     
 
-    logger.warning("Resolving type_id (%s) using ESI" % type_id)
+    logger.info("Resolving type_id (%s) using ESI" % type_id)
     type_name = get_type_id(type_id)
 
-    if not type_name:
-        logger.error("Failed to resolve type_id (%s) to type_name" % type_id)
-        if lazy:
-            return "Unknown Type Name"
+    if (not type_name or 'name' not in type_name) and raise_exception:
+        raise EveDataResolutionError(f"Failed to resolve type_id ({type_id}) to type_name")
 
-    return type_name
+    return type_name['name']
 
-def resolve_type_name_to_type_id(type_name, lazy=False):
+def resolve_type_name_to_type_id(type_name, raise_exception=True):
     """
     Resolve type_name to type_id.
     WARNING: Prone to SQL injection, do not expose to user.
@@ -59,110 +59,104 @@ def resolve_type_name_to_type_id(type_name, lazy=False):
     if type_id:
         return type_id         
 
-    logger.warning("Resolving type_id from type_name (%s) using ESI" % type_name)
+    logger.info("Resolving type_id from type_name (%s) using ESI" % type_name)
     response = resolve_names(type_name)
     if 'inventory_types' in response and response['inventory_types'] and 'id' in response['inventory_types'][0]:
         type_id = response['inventory_types'][0]['id']
     
-    if not type_id:
-        logger.error(
-            "Error resolving EVE type_name(%s) to type_id" % type_name)
-        if lazy:
-            return -1
+    if not type_id and raise_exception:
+        raise EveDataResolutionError(f"Error resolving EVE type_name({type_name}) to type_id")
 
     return type_id 
 
-def resolve_type_id_to_group_id(type_id, lazy=False):
+def resolve_type_id_to_group_id(type_id, raise_exception=True):
     query = "select groupID from invTypes where typeID = %s" % type_id
     group_id = query_static_database(query)
     
     if group_id:
         return group_id 
 
-    logger.warning("Resolving group_id from type_id (%s) using ESI" % type_id)
+    logger.info("Resolving group_id from type_id (%s) using ESI" % type_id)
 
     response = get_type_id(type_id)
-    if 'group_type' in response:
+    if 'group_id' in response:
         group_id = response['group_id']
 
-    if not group_id:
-        logger.error("Error resolving EVE type_id(%s) to group_id" % type_id)
-        if lazy:
-            return -1
+    if not group_id and raise_exception:
+        raise EveDataResolutionError(
+            f"Error resolving EVE type_id({type_id}) to group_id")
 
     return group_id 
 
-def resolve_type_id_to_category_name(type_id, lazy=False):
+
+def resolve_type_id_to_category_name(type_id, raise_exception=True):
     category_id = resolve_type_id_to_category_id(type_id)
     category_name = resolve_category_id_to_category_name(category_id)
-    if not category_name:
-        logger.error("Failed to resolve type_id(%s) to category name" % type_id)
-        if lazy:
-            return "Unknown Category"
+    if not category_name and raise_exception:
+        raise EveDataResolutionError(
+            f"Failed to resolve type_id({type_id}) to category name")
     return category_name
 
-def resolve_group_id_to_group_name(group_id, lazy=False):
+def resolve_group_id_to_group_name(group_id, raise_exception=True):
     query = "select groupName from invGroups where groupID = %s" % group_id
     group_name = query_static_database(query)
 
     if group_name:
         return group_name
 
-    logger.warning("Resolving group_name from group_id (%s) using ESI" % group_id)
+    logger.info("Resolving group_name from group_id (%s) using ESI" % group_id)
     response = get_group_id(group_id)
     if 'name' in response:
         group_name = response['name']
 
-    if not group_name:
-        logger.error("Error resolving EVE type_id(%s) to group_id" % group_id)
-        if lazy:
-            return "Unknown Group"
+    if not group_name and raise_exception:
+        raise EveDataResolutionError(
+            f"Error resolving EVE type_id({group_id}) to group_id")
 
     return group_name 
 
 
-def resolve_type_id_to_group_name(type_id, lazy=False):
+def resolve_type_id_to_group_name(type_id):
     group_id = resolve_type_id_to_group_id(type_id)
     return resolve_group_id_to_group_name(group_id)
 
 
-def resolve_group_id_to_category_id(group_id, lazy=False):
+def resolve_group_id_to_category_id(group_id, raise_exception=True):
     query = "select categoryID from invGroups where groupID = %s" % group_id
     category_id = query_static_database(query)
 
     if category_id:
         return category_id
 
-    logger.warning("Resolving category_id from group_id (%s) using ESI" % group_id)
+    logger.info("Resolving category_id from group_id (%s) using ESI" % group_id)
 
     response = get_group_id(group_id)
     if 'category_id' in response:
         category_id = response['category_id']
     
-    if not category_id:
-        logger.error("Error resolving category_id from group_id (%s)" % group_id)
-        if lazy:
-            return "Unknown Category"
+    if not category_id and raise_exception:
+        raise EveDataResolutionError(
+            f"Error resolving category_id from group_id ({group_id})")
     
     return category_id
 
-def resolve_category_id_to_category_name(category_id, lazy=False):
+def resolve_category_id_to_category_name(category_id, raise_exception=True):
     query = "select categoryName from invCategories where categoryID = %s" % category_id
     category_name = query_static_database(query)
 
     if category_name:
         return category_name 
 
-    logger.warning("Resolving category_name from category_id (%s) using ESI" % category_id)
+    logger.info("Resolving category_name from category_id (%s) using ESI" % category_id)
     
     response = get_category_id(category_id)
     if 'name' in response:
         category_name = response['name']
 
-    if not category_name:
-        logger.error("Error resolving category_name from category_id (%s)" % category_id)
-        if lazy:
-            return -1
+    if not category_name and raise_exception:
+        raise EveDataResolutionError(
+            f"Error resolving category_name from category_id ({category_id})")
+
     return category_name
 
 def resolve_type_id_to_category_id(type_id):
@@ -171,7 +165,10 @@ def resolve_type_id_to_category_id(type_id):
     return int(category_id)
 
 
-def resolve_location_id_to_station(location_id, lazy=False):
+def resolve_location_id_to_station(location_id, raise_exception=True):
+    if location_id < 60000000 or location_id > 64000000:
+        raise EveDataResolutionError('Attempted to resolve a station outside of the possible range')
+    
     query = "select stationName from staStations where stationID = %s" % location_id
     station_name = query_static_database(query)
 
@@ -181,7 +178,7 @@ def resolve_location_id_to_station(location_id, lazy=False):
     if str(location_id) in cache:
         return cache.get(str(location_id))
 
-    logger.warning(
+    logger.info(
         "Resolving location_id (%s) to station using ESI" % location_id)
     response = get_station_id(location_id)
 
@@ -189,9 +186,10 @@ def resolve_location_id_to_station(location_id, lazy=False):
         station_name = response['name']
         cache.set(str(location_id), station_name)
 
-    if not station_name:
-        if lazy:
-            return "Unknown Station"
+    if not station_name and raise_exception:
+        raise EveDataResolutionError(f"Failed to resolve location_id({location_id} to station")
+    elif not station_name:
+        return "Unknown Station"
     
     return station_name 
 
@@ -218,8 +216,7 @@ def resolve_location_from_location_id_location_type(location_id, location_type, 
         elif location_type == 'other':
             location = get_structure_id(location_id, token_entity_id)
     except Exception as e:
-        logger.error("Failed to resolve location_id (%s) of location_type (%s)" % 
-            (location_id, location_type))
-        logger.exception(e)
+        raise EveDataResolutionError(
+            f"Failed to resolve location_id ({location_id}) of location_type ({location_type}). Reason: {str(e)}")
 
     return location
