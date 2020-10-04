@@ -999,6 +999,17 @@ class EveStructure(EveEntityData):
     type_id = models.BigIntegerField(null=True)
     name = models.CharField(max_length=256)
 
+    @property
+    def fuel_expires_soon(self):
+        if (self.fuel_expires - timezone.now()).days < 7:
+            return True
+        return False
+
+    @property
+    def reinforcement_time(self):
+        return timezone.now().replace(hour=0, minute=0, second=0,
+                               microsecond=0) + datetime.timedelta(hours=self.reinforce_hour)
+
     def __str__(self):
         if not self.name:
             self.name = "Unknown Name"
@@ -1035,6 +1046,13 @@ class EveStructure(EveEntityData):
                     f"Encountered unknown attribute {key} for EveStructure")
 
         return structure
+
+    class Meta:
+        permissions = [
+            ('bypass_corporation_view_requirements',
+             "Can view a corporation's structures regardless of current membership"),
+        ]
+
         
             
 """

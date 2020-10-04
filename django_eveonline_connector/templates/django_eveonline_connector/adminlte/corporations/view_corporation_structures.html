@@ -1,0 +1,73 @@
+{% extends "django_eveonline_connector/adminlte/corporations/view_corporation.html" %}
+
+{% block header %}
+Structures
+{% endblock %}
+
+{% block description %}
+{{corporation.name}}
+{% endblock %}
+
+{% block tab_content %}
+<div class="box box-success box-solid">
+    <div class="box-header">
+        <h3 class="box-title">Structures</h3>
+    </div>
+    <div class="box-body">
+        <div class="dataTables_wrapper form-inline dt-bootstrap">
+            <table class="table table-bordered table-striped dataTable">
+                <thead>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Structure</th>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Fuel Expires</th>
+                    <th class="col-lg-4 col-md-4 col-xs-2">Timer</th>
+                </thead>
+                <tbody>
+                    {% for structure in structures %}
+                    <tr>
+                        <td>
+                            <img src="https://images.evetech.net/types/{{structure.type_id}}/icon?size=32"
+                                class="img-circle" alt="Avatar" width="32px" title="{{character.character.name}}">
+                            {{structure.name}}
+                        </td>
+                        <td>
+                            <p
+                            {% if structure.fuel_expires_soon %}
+                            class="text-danger"
+                            {% endif %}>{{structure.fuel_expires}}</p>
+                            
+                        </td>
+                        <td>
+                            {{structure.reinforcement_time|date:'H' }}:00
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+        })
+    })
+</script>
+<script>
+    $(document).ready(function () {
+        $('#structures').addClass('active');
+    });
+</script>
+
+{% endblock %}

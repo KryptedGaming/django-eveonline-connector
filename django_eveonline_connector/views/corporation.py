@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django_eveonline_connector.models import EveCorporation, EveCharacter, PrimaryEveCharacterAssociation
+from django_eveonline_connector.models import EveCorporation, EveCharacter, PrimaryEveCharacterAssociation, EveStructure
 from django.contrib import messages
 from django.db.models import Q 
 from itertools import chain
@@ -30,3 +30,17 @@ def view_corporation(request, external_id):
         )
     )
     return render(request, 'django_eveonline_connector/adminlte/corporations/view_corporation_roster.html', context)
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evecorporation', raise_exception=True)
+def view_corporation_structures(request, external_id):
+    if request.user.primary_evecharacter.character.corporation.external_id == external_id and not request.user.has_perm('django_eveonline_connector.bypass_corporation_view_requirements'):
+        messages.error(request, "You do not have permission to view those structures, as you are not a member of that corporation or are missing the BYPASS permission")
+        return redirect('django-eveonline-connector-view-corporation', external_id)
+    context = {
+        'corporation': EveCorporation.objects.get(external_id=external_id),
+        'structures': EveStructure.objects.filter(entity__external_id=external_id)
+    }
+    return render(request, 'django_eveonline_connector/adminlte/corporations/view_corporation_structures.html', context)
+
