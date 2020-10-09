@@ -47,6 +47,8 @@ urlpatterns += [
          name="django-eveonline-connector-view-character-journal"),
     path('character/view/<int:external_id>/transactions/', character.view_character_transactions,
          name="django-eveonline-connector-view-character-transactions"),
+    path('character/view/<int:external_id>/audit/', character.view_character_audit,
+         name="django-eveonline-connector-view-character-audit"),
 ]
 
 # Corporation 

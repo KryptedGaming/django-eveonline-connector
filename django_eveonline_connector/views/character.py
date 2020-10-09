@@ -89,6 +89,7 @@ def list_characters(request):
 def view_character(request, external_id):
     context = {}
     context['character'] = EveCharacter.objects.get(external_id=external_id)
+    context['message'] = "A String"
     return render(request, 'django_eveonline_connector/adminlte/characters/view_character.html', context)
 
 
@@ -189,6 +190,19 @@ def view_character_transactions(request, external_id):
     return render(
         request,
         'django_eveonline_connector/adminlte/characters/view_character_transactions.html',
+        context={
+            'character': character,
+        }
+    )
+
+
+@login_required
+@permission_required('django_eveonline_connector.view_evecharacter', raise_exception=True)
+def view_character_audit(request, external_id):
+    character = EveCharacter.objects.get(external_id=external_id)
+    return render(
+        request,
+        'django_eveonline_connector/adminlte/characters/view_character_audit.html',
         context={
             'character': character,
         }
