@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def query_static_database(query, raise_exception=False):
+def query_static_database(query, raise_exception=False, fetchall=False):
     """
     Executes the SQL query on the 'eve_static' database.
     If the value is not found, returns None. 
@@ -15,8 +15,13 @@ def query_static_database(query, raise_exception=False):
     try:
         with connections['eve_static'].cursor() as cursor:
             cursor.execute(query)
-            result = cursor.fetchone()
+            if fetchall:
+                result = cursor.fetchall()
+            else:
+                result = cursor.fetchone()
         if result:
+            if fetchall:
+                return result
             return result[0]
     except django.db.utils.DatabaseError as e:
         logger.error("EVE Static Database is not properly configured, or ran into an error.")
@@ -53,6 +58,7 @@ def resolve_type_name_to_type_id(type_name, raise_exception=True):
     Resolve type_name to type_id.
     WARNING: Prone to SQL injection, do not expose to user.
     """
+    type_name = type_name.replace("'", "''").rstrip()
     query = "select typeID from invTypes where typeName = '%s'" % type_name
     type_id = query_static_database(query)
 
@@ -220,3 +226,58 @@ def resolve_location_from_location_id_location_type(location_id, location_type, 
             f"Failed to resolve location_id ({location_id}) of location_type ({location_type}). Reason: {str(e)}")
 
     return location
+
+def get_type_id_prerq_skill_ids(type_id):
+    query = """SELECT 
+        i.typeID         as itemID, 
+        ip.typeID        as prerqSkillID,
+        dtal.valueInt    as prerqSkillLevelInt,
+        dtal.valueFloat  as prerqSkillLevelFloat
+    FROM invGroups g
+    LEFT JOIN invTypes i 
+        ON i.groupID = g.groupID
+    LEFT JOIN dgmTypeAttributes dta
+        ON dta.typeID = i.typeID AND
+            dta.attributeID IN (182, 183, 184, 1285, 1289, 1290)
+    LEFT JOIN dgmTypeAttributes dtal 
+        ON dtal.typeID = dta.typeID AND 
+        (
+            (dtal.attributeID = 277 AND dta.attributeID = 182) OR
+            (dtal.attributeID = 278 AND dta.attributeID = 183) OR
+            (dtal.attributeID = 279 AND dta.attributeID = 184) OR
+            (dtal.attributeID = 1286 AND dta.attributeID = 1285) OR
+            (dtal.attributeID = 1287 AND dta.attributeID = 1289) OR
+            (dtal.attributeID = 1288 AND dta.attributeID = 1290)
+        )
+    JOIN invTypes ip 
+        ON ip.typeID = dta.valueInt OR
+            ip.typeID = dta.valueFloat
+
+    WHERE i.typeID=%s
+        AND i.published = 1
+        AND g.categoryID NOT IN (0,1,2,3,25)
+    ORDER BY g.groupName DESC
+    """ % str(type_id)
+
+    try:
+        with connections['eve_static'].cursor() as cursor:
+            cursor.execute(query)
+            result = cursor.fetchall()
+    except django.db.utils.DatabaseError as e:
+        raise EveDataResolutionError(
+            f"EVE Static Database is not properly configured, or ran into an error. {e}")
+    return result
+
+
+def get_prerequisite_skills(type_id):
+    skill_to_resolve = type_id.pop(0)
+    prereqs = get_type_id_prerq_skill_ids(skill_to_resolve[1])
+    skill_to_save = { 
+        'name': resolve_type_id_to_type_name(skill_to_resolve[1]),
+        'type_id': skill_to_resolve[1],
+        'level': skill_to_resolve[3],
+    }
+    if prereqs or type_id:
+        return [skill_to_save] + get_prerequisite_skills(type_id + prereqs)
+    else:
+        return [skill_to_save]

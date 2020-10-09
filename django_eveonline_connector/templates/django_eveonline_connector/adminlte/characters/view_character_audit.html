@@ -1,0 +1,132 @@
+{% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
+
+{% block header %}
+Contracts
+{% endblock %}
+
+{% block description %}
+{{character.name}}
+<p id="{{character.external_id}}" class="external-id"></p>
+{% endblock %}
+
+{% block tab_content %}
+{% if 'django_eveonline_doctrine_manager' in INSTALLED_APPS %}
+<!-- Fitting Audit -->
+<div class="box box-warning box-solid">
+    <div class="box-header">
+        <h3 class="box-title">
+            Fitting Audit
+        </h3>
+    </div>
+    <div class="box-body">
+        <table id="fitting-audit-table" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Fitting</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Status</th>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <i class="fa fa-1x fa-spinner fa-spin" aria-hidden="true"></i>
+                    </td>
+                    <td>
+                        <i class="fa fa-1x fa-spinner fa-spin" aria-hidden="true"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- End Fitting Audit -->
+<!-- Doctrine Audit -->
+<div class="box box-warning box-solid">
+    <div class="box-header">
+        <h3 class="box-title">
+            Doctrine Audit
+        </h3>
+    </div>
+    <div class="box-body">
+        <table id="doctrine-audit-table" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Doctrine</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Status</th>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <i class="fa fa-1x fa-spinner fa-spin" aria-hidden="true"></i>
+                    </td>
+                    <td>
+                        <i class="fa fa-1x fa-spinner fa-spin" aria-hidden="true"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- End Doctrine Audit -->
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<!-- Datatable Settings -->
+<script>
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+    $(function () {
+        $('table').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'asc']],
+            'pageLength': 5,
+            "autoWidth": false,
+        })
+    })
+</script>
+
+<!-- Update Menu Tab -->
+<script>
+    $(document).ready(function () {
+        $('#audit').addClass('active');
+    });
+</script>
+
+<!-- Fitting Audit Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+    var externalId = document.querySelectorAll('.external-id')[0].id 
+    const res = await fetch('/eveonline/api/characters/shipaudit?external_id=' + externalId)
+    const resJSON = await res.json()
+    const fittingTable = document.getElementById('fitting-audit-table').getElementsByTagName('tbody')[0];
+    fittingTable.deleteRow(0);
+    for (var i=0; i<resJSON['fittings'].length; i++) {
+        fitting = resJSON['fittings'][i]
+        var row = fittingTable.insertRow(0);
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+        cell1.innerHTML = '<img class="img-circle pull-left" src="https://images.evetech.net/types/' + fitting['type_id'] +  '/icon?size=32"title="' + fitting["name"] + '" width="32px">' + fitting['name']
+        cell2.innerHTML = '<i class="fa fa-check text-success"></i>'; 
+    }
+
+    const doctrineTable = document.getElementById('doctrine-audit-table').getElementsByTagName('tbody')[0];
+    doctrineTable.deleteRow(0);
+    for (var i = 0; i < resJSON['doctrines'].length; i++) {
+        doctrine = resJSON['doctrines'][i]
+        var row = doctrineTable.insertRow(0);
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+        cell1.innerHTML = doctrine['name']
+        if (doctrine['can_fly']) {
+            cell2.innerHTML = '<i class="fa fa-check text-success"></i>';
+        }
+        else {
+            cell2.innerHTML = '<i class="fa fa-times text-danger"></i>'
+        }
+        
+    }
+})
+</script>
+<!-- End Fitting Audit Scripts -->
+
+{% endblock %}

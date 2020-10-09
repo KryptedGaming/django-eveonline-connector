@@ -1008,7 +1008,7 @@ class EveStructure(EveEntityData):
     @property
     def reinforcement_time(self):
         return timezone.now().replace(hour=0, minute=0, second=0,
-                               microsecond=0) + datetime.timedelta(hours=self.reinforce_hour)
+                                      microsecond=0) + datetime.timedelta(hours=self.reinforce_hour)
 
     def __str__(self):
         if not self.name:

@@ -117,6 +117,9 @@ EVE Online - View Character
                     <li id="transactions"><a
                             href="{% url 'django-eveonline-connector-view-character-transactions' character.external_id %}">Transactions</a>
                     </li>
+                    <li id="audit"><a
+                            href="{% url 'django-eveonline-connector-view-character-audit' character.external_id %}">Audit</a>
+                    </li>
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane active">
