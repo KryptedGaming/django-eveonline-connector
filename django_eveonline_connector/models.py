@@ -281,8 +281,9 @@ class EveToken(models.Model):
             new_token = esi_security.refresh()
         except Exception as e:
             if b"invalid_grant" in e.response:
-                self.invalidated = timezone.now()
-                self.save()
+                if not self.invalidated:
+                    self.invalidated = timezone.now()
+                    self.save()
                 return False    
 
         if timezone.now() > self.expiry:
