@@ -20,7 +20,7 @@ def get_assets(request):
 
 
 @login_required
-@permission_required('django_eveonline_connector.view_eveclone', raise_exception=True)
+@permission_required('django_eveonline_connector.view_evejumpclone', raise_exception=True)
 def get_clones(request):
     if 'external_id' not in request.GET:
         return HttpResponse(status=400)

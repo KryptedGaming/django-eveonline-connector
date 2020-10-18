@@ -109,7 +109,7 @@ def view_character_assets(request, external_id):
 
 @login_required
 @permission_required('django_eveonline_connector.view_evecharacter', raise_exception=True)
-@permission_required('django_eveonline_connector.view_eveclone', raise_exception=True)
+@permission_required('django_eveonline_connector.view_evejumpclone', raise_exception=True)
 def view_character_clones(request, external_id):
     character = EveCharacter.objects.get(external_id=external_id)
     return render(
