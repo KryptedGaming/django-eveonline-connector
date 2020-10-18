@@ -656,9 +656,9 @@ class EveContact(EveEntityData):
 
 class EveContract(EveEntityData):
     # ESI Data
-    contract_id = models.IntegerField(unique=True)
-    acceptor_id = models.IntegerField()
-    assignee_id = models.IntegerField()
+    contract_id = models.BigIntegerField(unique=True)
+    acceptor_id = models.BigIntegerField()
+    assignee_id = models.BigIntegerField()
 
     buyout = models.FloatField(blank=True, null=True)
     collateral = models.FloatField(blank=True, null=True)
@@ -674,8 +674,8 @@ class EveContract(EveEntityData):
 
     for_corporation = models.BooleanField()
     availability = models.CharField(max_length=32)
-    issuer_corporation_id = models.IntegerField()
-    issuer_id = models.IntegerField()
+    issuer_corporation_id = models.BigIntegerField()
+    issuer_id = models.BigIntegerField()
 
     start_location_id = models.BigIntegerField(blank=True, null=True)
     end_location_id = models.BigIntegerField(blank=True, null=True)

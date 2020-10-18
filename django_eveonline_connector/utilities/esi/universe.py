@@ -61,7 +61,7 @@ def get_structure_id(structure_id, token_entity_id, safe=True):
         return cache.get(str(structure_id))
 
     if safe: # not running safe can lead to ESI lockouts, structure resolution is busted 
-        structure = EveStructure.objects.filter(structure_id=structure_id)
+        structure = EveStructure.objects.filter(structure_id=structure_id).first()
         if structure:
             return structure.name
         else:
