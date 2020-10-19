@@ -26,11 +26,13 @@ Roster
                         <td>
                             <img src="https://imageserver.eveonline.com/Character/{{character.character.external_id}}_64.jpg" class="img-circle" alt="Avatar"
                                 width="32px" title="{{character.character.name}}">
-                            {{character.character.name}}
+                            <a href="{% url 'django-eveonline-connector-view-character' character.character.external_id %}">{{character.character.name}}</a>
                         </td>
                         <td>
                             {% for character in character.get_related_characters %}
+                            <a href="{% url 'django-eveonline-connector-view-character' character.external_id %}">
                             <img src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar" width="32px" title="{{character.name}}">
+                            </a>
                             {% endfor %}
                         </td>
                     </tr>

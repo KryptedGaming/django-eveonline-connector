@@ -217,10 +217,9 @@ def resolve_location_from_location_id_location_type(location_id, location_type, 
     try:
         if location_type == 'station':
             location = resolve_location_id_to_station(location_id)
-        elif location_type == 'item': 
+        else:
             location = get_structure_id(location_id, token_entity_id)
-        elif location_type == 'other':
-            location = get_structure_id(location_id, token_entity_id)
+            
     except Exception as e:
         raise EveDataResolutionError(
             f"Failed to resolve location_id ({location_id}) of location_type ({location_type}). Reason: {str(e)}")

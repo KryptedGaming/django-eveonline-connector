@@ -52,7 +52,7 @@ def refresh_character_public(request, external_id):
     return redirect("/")
 
 @login_required
-@permission_required('django_eveonline_connector.change_evecharacter')
+@permission_required('django_eveonline_connector.change_evecharacter', raise_exception=True)
 def refresh_character(request, external_id):
     if 'fields' not in request.GET:
        return HttpResponse(status=400)

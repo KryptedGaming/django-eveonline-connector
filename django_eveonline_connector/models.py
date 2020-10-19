@@ -574,6 +574,7 @@ class EveJumpClone(EveEntityData):
             location_type=data_row['location_type'],
             jump_clone_id=data_row['jump_clone_id'],)
 
+        logger.debug(data_row)
         clone.location = resolve_location_from_location_id_location_type(
             clone.location_id,
             clone.location_type,
@@ -704,9 +705,10 @@ class EveContract(EveEntityData):
         resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
-            if not EveContract.objects.filter(contract_id=row['contract_id']).exists():
-                EveContract.create_from_esi_row(
-                    row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
+            if EveContract.objects.filter(contract_id=row['contract_id']).exists():
+                EveContract.objects.filter(contract_id=row['contract_id']).delete() # lazy delete for now
+            EveContract.create_from_esi_row(
+                row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -1061,8 +1063,6 @@ class EveStructure(EveEntityData):
 EVE Connector Models
 Models for EVE Connector functionality 
 """
-
-
 class PrimaryEveCharacterAssociation(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="primary_evecharacter")
@@ -1107,3 +1107,9 @@ class EveCharacterInfo(models.Model):
 
     def __str__(self):
         return self.character.name
+
+
+"""
+EVE Connector Reports
+Models for EVE Connector reports
+"""
