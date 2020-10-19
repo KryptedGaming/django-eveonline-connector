@@ -1020,14 +1020,15 @@ class EveStructure(EveEntityData):
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
         for row in data:
-            if EveStructure.objects.filter(structure_id=row['structure_id']).exists():
-                EveStructure.objects.filter(structure_id=row['structure_id']).delete()
             EveStructure.create_from_esi_row(row, entity_external_id)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
         logger.info("Creating EVE Structure")
-        structure = EveStructure()
+        if EveStructure.objects.filter(structure_id=data_row['structure_id']).exists():
+            structure = EveStructure.objects.filter(structure_id=data_row['structure_id']).first()
+        else:
+            structure = EveStructure()
         for key in data_row.keys():
             try:
                 if type(data_row[key]) == pyswagger.primitives._time.Datetime:
