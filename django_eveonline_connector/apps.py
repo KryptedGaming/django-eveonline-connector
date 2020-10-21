@@ -33,12 +33,6 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
     def ready(self):
         from django_eveonline_connector.models import EveClient 
         from django.db.utils import OperationalError
-        try:
-            if not EveClient.objects.all().exists():
-                EveClient().save()
-        except OperationalError:
-            # assume we're in migration phase
-            pass 
 
         # bind to krypted application
         if apps.is_installed('packagebinder'):
