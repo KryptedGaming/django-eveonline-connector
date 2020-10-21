@@ -40,38 +40,40 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
             try:
                 bind = apps.get_app_config('packagebinder').get_bind_object(
                     self.package_name, self.version)
+                # Required Task Bindings
+                bind.add_required_task(
+                    name="EVE: Update Tokens",
+                    task="django_eveonline_connector.tasks.update_tokens",
+                    interval=1,
+                    interval_period="days",
+                )
+                bind.add_required_task(
+                    name="EVE: Update Characters",
+                    task="django_eveonline_connector.tasks.update_characters",
+                    interval=1,
+                    interval_period="days",
+                )
+                bind.add_required_task(
+                    name="EVE: Update Corporations",
+                    task="django_eveonline_connector.tasks.update_corporations",
+                    interval=1,
+                    interval_period="days",
+                )
+                bind.add_required_task(
+                    name="EVE: Update Affilitions",
+                    task="django_eveonline_connector.tasks.update_tokens",
+                    interval=5,
+                    interval_period="minutes",
+                )
+                # Optional Task Bindings
+                bind.add_optional_task(
+                    name="EVE: Update Structures",
+                    task="django_eveonline_connector.tasks.update_structures",
+                    interval=1,
+                    interval_period="days",
+                )
+                bind.save()
             except BindException as e:
+                print(e)
                 return 
-            # Required Task Bindings
-            bind.add_required_task(
-                name="EVE: Update Tokens",
-                task="django_eveonline_connector.tasks.update_tokens",
-                interval=1,
-                interval_period="days",
-            )
-            bind.add_required_task(
-                name="EVE: Update Characters",
-                task="django_eveonline_connector.tasks.update_characters",
-                interval=1,
-                interval_period="days",
-            )
-            bind.add_required_task(
-                name="EVE: Update Corporations",
-                task="django_eveonline_connector.tasks.update_corporations",
-                interval=1,
-                interval_period="days",
-            )
-            bind.add_required_task(
-                name="EVE: Update Affilitions",
-                task="django_eveonline_connector.tasks.update_tokens",
-                interval=5,
-                interval_period="minutes",
-            )
-            # Optional Task Bindings 
-            bind.add_optional_task(
-                name="EVE: Update Structures",
-                task="django_eveonline_connector.tasks.update_structures",
-                interval=1,
-                interval_period="days",
-            )
-            bind.save()
+
