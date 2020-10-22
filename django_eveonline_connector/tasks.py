@@ -130,7 +130,7 @@ def update_structures():
 """
 Character tasks 
 """
-def update_character_eveentitydata(op, data_model, character_id, delete=True):
+def update_character_eveentitydata(op, data_model, character_id, delete=False):
     """
     Helper method for update_character_??? tasks.
     They basically all follow the same behavior. 
@@ -225,7 +225,7 @@ Corporatoin Tasks
 """
 
 
-def update_corporation_eveentitydata(op, data_model, corporation_id, delete=True):
+def update_corporation_eveentitydata(op, data_model, corporation_id, delete=False):
     """
     Helper method for update_corporation_??? tasks.
     They basically all follow the same behavior. 
