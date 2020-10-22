@@ -980,31 +980,31 @@ Other EVE Models
 class EveStructure(EveEntityData):
     # Base ESI Data
     corporation_id = models.BigIntegerField()
-    fuel_expires = models.DateTimeField(null=True)
-    next_reinforce_apply = models.DateTimeField(null=True)
-    next_reinforce_hour = models.BigIntegerField(null=True)
-    next_reinforce_weekday = models.BigIntegerField(null=True)
+    fuel_expires = models.DateTimeField(null=True, blank=True)
+    next_reinforce_apply = models.DateTimeField(null=True, blank=True)
+    next_reinforce_hour = models.BigIntegerField(null=True, blank=True)
+    next_reinforce_weekday = models.BigIntegerField(null=True, blank=True)
     profile_id = models.BigIntegerField()
     reinforce_hour = models.BigIntegerField()
-    reinforce_weekday = models.BigIntegerField(null=True)
-    services = models.TextField(null=True)
+    reinforce_weekday = models.BigIntegerField(null=True, blank=True)
+    services = models.TextField(null=True, blank=True)
     state = models.CharField(max_length=64)
-    state_timer_end = models.DateTimeField(null=True)
-    state_timer_start = models.DateTimeField(null=True)
+    state_timer_end = models.DateTimeField(null=True, blank=True)
+    state_timer_start = models.DateTimeField(null=True, blank=True)
     structure_id = models.BigIntegerField()
     system_id = models.BigIntegerField()
     type_id = models.BigIntegerField()
-    unanchors_at = models.DateTimeField(null=True)
+    unanchors_at = models.DateTimeField(null=True, blank=True)
 
     # Additional ESI Data
     owner_id = models.BigIntegerField()
     solar_system_id = models.BigIntegerField()
-    type_id = models.BigIntegerField(null=True)
+    type_id = models.BigIntegerField(null=True, blank=True)
     name = models.CharField(max_length=256)
 
     @property
     def fuel_expires_soon(self):
-        if (self.fuel_expires - timezone.now()).days < 7:
+        if self.fuel_expires and ((self.fuel_expires - timezone.now()).days < 7):
             return True
         return False
 

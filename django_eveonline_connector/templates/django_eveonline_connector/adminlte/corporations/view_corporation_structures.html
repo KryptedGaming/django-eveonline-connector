@@ -30,10 +30,17 @@ Structures
                             {{structure.name}}
                         </td>
                         <td>
+                            {% if structure.fuel_expires %}
                             <p
                             {% if structure.fuel_expires_soon %}
                             class="text-danger"
-                            {% endif %}>{{structure.fuel_expires}}</p>
+                            {% endif %}>
+                            {{structure.fuel_expires}}
+                            </p>
+                            {% else %}
+                            <p class="text-warning"><b>Low Power</b></p>
+                            {% endif %}
+                            
                             
                         </td>
                         <td>
