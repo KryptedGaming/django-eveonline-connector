@@ -1,5 +1,6 @@
 from django_eveonline_connector.tasks import update_tokens, pull_corporation_roster
-from django_eveonline_connector.models import EveToken, EveScope, EveClient, EveCharacter, EveCorporation
+from django_eveonline_connector.models import *
+from django.contrib.auth.models import User, Group
 from django.test import TestCase
 from datetime import timedelta
 from django.utils import timezone
@@ -31,18 +32,31 @@ class UpdateTokenTest(TestCase):
     @patch('django_eveonline_connector.models.EveToken.refresh')
     def test_valid_token(self, mock_refresh):
         mock_refresh.return_value = True
+        character = EveCharacter.objects.create(
+            external_id=12345,
+            name="Test Character"
+        )
         token = EveToken.objects.create()
+        character.token = token 
+        character.save() 
         token.scopes.set(EveScope.objects.all())
         self.assertTrue(token.valid)
         update_tokens()
         self.assertTrue(EveToken.objects.all().count() == 1)
         self.assertTrue(EveToken.objects.all()[0].pk == token.pk)
         self.assertTrue(EveToken.objects.all()[0].invalidated == None)
+        token.delete()
 
     @patch('django_eveonline_connector.models.EveToken.refresh')
     def test_invalidating_token(self, mock_refresh):
         mock_refresh.return_value = True
+        character = EveCharacter.objects.create(
+            external_id=12345,
+            name="Test Character"
+        )
         token = EveToken.objects.create()
+        character.token = token 
+        character.save()
         token.scopes.set(EveScope.objects.all())
         token.scopes.remove(EveScope.objects.filter(required=True)[0])
         self.assertFalse(token.valid)
@@ -57,6 +71,12 @@ class UpdateTokenTest(TestCase):
     def test_delete_invalidated_token(self, mock_refresh):
         mock_refresh.return_value = True
         token = EveToken.objects.create()
+        character = EveCharacter.objects.create(
+            external_id=12345,
+            name="Test Character"
+        )
+        character.token = token 
+        character.save()
         token.scopes.set(EveScope.objects.all())
         token.scopes.remove(EveScope.objects.filter(required=True)[0])
         self.assertFalse(token.valid)
@@ -94,3 +114,44 @@ class PullCorporationRoster(TestCase):
         characters = EveCharacter.objects.filter(corporation=self.corporation)
         character_ids = characters.values_list('external_id', flat=True)
         self.assertTrue(list(character_ids) == [1,3,5])
+
+
+class AssignEveGroupsTest(TestCase):
+    def setUp(self):
+        self.group = Group.objects.create(name="TEST")
+        self.eve_group_rule = EveGroupRule.objects.create(group=self.group)
+        self.user = User.objects.create(username="TEST USER")
+        self.excluded_user = User.objects.create(username="EXCLUDED USER")
+        self.excluded_user_2 = User.objects.create(username="EXCLUDED USER 2")
+        self.eve_token = EveToken.objects.create(user=self.user)
+        self.eve_alliance = EveAlliance.objects.create(
+            name="TEST ALLIANCE PLEASE IGNORE",
+            external_id=912345
+        )
+        self.eve_corporation = EveCorporation.objects.create(
+            name="TEST CORPORATION",
+            alliance=self.eve_alliance,
+            external_id=512345
+        )
+        self.eve_character = EveCharacter.objects.create(name="TEST",
+            token=self.eve_token,
+            corporation=self.eve_corporation,
+            external_id=112345)
+
+    def tearDown(self):
+        self.group.delete()
+        self.eve_group_rule.delete()
+        self.eve_token.delete()
+        self.eve_alliance.delete()
+        self.eve_corporation.delete()
+        self.eve_character.delete()
+
+    def test_group_assignment(self):
+        from django_eveonline_connector.tasks import assign_eve_groups
+        self.excluded_user.groups.add(self.group)
+        self.excluded_user_2.groups.add(self.group)
+        self.eve_group_rule.characters.add(self.eve_character)
+        assign_eve_groups()
+        self.assertTrue(self.group not in self.excluded_user.groups.all())
+        self.assertTrue(self.group not in self.excluded_user_2.groups.all())
+        self.assertTrue(self.group in self.user.groups.all())

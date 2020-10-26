@@ -97,7 +97,24 @@ def update_characters(jitter_max=1800):
             update_character_transactions.apply_async(
                 args=[eve_character.external_id],
                 countdown=jitter)
-                
+
+@shared_task
+def update_character_roles():
+    for eve_character in EveCharacter.objects.all():
+        if eve_character.token and eve_character.token.valid:
+            update_character_corporation_roles.apply_async(args=[eve_character.external_id])
+
+@shared_task
+def assign_eve_groups():
+    for group_rule in EveGroupRule.objects.all():
+        for user in group_rule.invalid_user_list:
+            logger.info(
+                f"Removing group ({group_rule.group} to user ({user})")
+            user.groups.remove(group_rule.group)
+        for user in group_rule.missing_user_list:
+            logger.info(
+                f"Adding group ({group_rule.group} to user ({user})")
+            user.groups.add(group_rule.group)
 
 @shared_task
 def update_corporations():
@@ -220,6 +237,18 @@ def update_character_transactions(character_id, *args, **kwargs):
     update_character_eveentitydata(
         op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
+@shared_task
+def update_character_corporation_roles(character_id):
+    character = EveCharacter.objects.get(external_id=character_id)
+    eve_client = EveClient.get_instance()
+    response = eve_client.call(op='get_characters_character_id_roles', character_id=character_id)
+    if response.status != 200:
+        logger.error(f"Failed to pull corporation roles for character {character_id}")
+        return 
+    roles = EveCorporationRole.objects.filter(
+        codename__in=response.data['roles'])
+    if roles != character.roles.all():
+        character.roles.set(roles)
 """
 Corporatoin Tasks 
 """

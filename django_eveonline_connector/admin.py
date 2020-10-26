@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.conf import settings 
 from django.apps import apps 
 from django import forms
-from django_eveonline_connector.models import EveClient, EveScope, EveCharacter, EveToken, EveCorporation, EveAlliance, EveStructure
+from django_eveonline_connector.models import *
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
@@ -28,6 +28,11 @@ else:
     else:
         admin.site.register(EveClient)
 
+@admin.register(EveGroupRule)
+class EveGroupRuleAdmin(admin.ModelAdmin):
+    list_display = ('group',)
+    filter_horizontal = ('characters', 'corporations', 'alliances', 'roles')
+
 @admin.register(EveScope)
 class EveScopeAdmin(admin.ModelAdmin):
     list_display = ('name', 'required')
@@ -36,15 +41,6 @@ class EveScopeAdmin(admin.ModelAdmin):
 class EveCorporationAdmin(admin.ModelAdmin):
     list_display = ('name', 'ceo', 'track_corporation', 'track_characters')
     search_fields = ('name', 'ceo__name')
-
-@admin.register(EveToken)
-class EveTokenAdmin(admin.ModelAdmin):
-    list_display = ('is_valid', 'evecharacter', 'user')
-    search_fields = ('evecharacter__name',)
-
-    def is_valid(self, obj):
-        return obj.valid
-    is_valid.boolean = True
 
 @admin.register(EveCharacter)
 class EveCharacterAdmin(admin.ModelAdmin):
@@ -70,5 +66,3 @@ class EveCharacterAdmin(admin.ModelAdmin):
         else:
             return None 
     get_user.short_description = "User"
-
-admin.site.register(EveStructure)

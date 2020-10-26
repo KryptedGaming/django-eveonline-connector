@@ -1,8 +1,8 @@
-from django.core.cache import cache
 from esipy import EsiClient, EsiSecurity, EsiApp
+from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group 
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
 from django_singleton_admin.models import DjangoSingleton
@@ -26,8 +26,6 @@ id_types = (
 ESI Models
 These models are used as wrappers around EsiPy
 """
-
-
 class EveClient(DjangoSingleton):
     esi_base_url = models.URLField(
         default="https://esi.evetech.net/latest/swagger.json?datasource=tranquility")
@@ -133,9 +131,11 @@ class EveClient(DjangoSingleton):
 
         if token:
             token.refresh()
+            logger.info(f"Calling ESI: {op} with arguments {kwargs}")
             request = EveClient.get_esi_client(token=token).request(
                 operation(**kwargs), raise_on_error=raise_exception)
         else:
+            logger.info(f"Calling ESI: {op} with arguments {kwargs}")
             request = EveClient.get_esi_client().request(operation(**kwargs), raise_on_error=raise_exception)
         
         if request.status not in [200, 204]:
@@ -325,7 +325,7 @@ class EveEntity(models.Model):
 class EveCharacter(EveEntity):
     corporation = models.ForeignKey(
         "EveCorporation", on_delete=models.SET_NULL, null=True)
-
+    roles = models.ManyToManyField("EveCorporationRole", blank=True)
     token = models.OneToOneField(
         "EveToken", on_delete=models.SET_NULL, null=True)
 
@@ -705,8 +705,6 @@ class EveContract(EveEntityData):
         resolved_ids = resolve_ids_with_types(ids_to_resolve)
 
         for row in data:
-            if EveContract.objects.filter(contract_id=row['contract_id']).exists():
-                EveContract.objects.filter(contract_id=row['contract_id']).delete() # lazy delete for now
             EveContract.create_from_esi_row(
                 row, entity_external_id, resolved_ids=resolved_ids, corporation=False)
 
@@ -730,32 +728,24 @@ class EveContract(EveEntityData):
         **Returns**
             EveContract() instance
         """
-        contract = EveContract(
-            contract_id=data_row['contract_id'],
-            acceptor_id=data_row['acceptor_id'],
-            assignee_id=data_row['assignee_id'],
-            buyout=data_row.get('buyout', None),
-            collateral=data_row.get('collateral', None),
-            price=data_row.get('price', None),
-            reward=data_row.get('reward', None),
-            volume=data_row.get('volume', None),
-            date_accepted=parse_datetime(
-                data_row['date_created'].to_json()) if 'date_created' in data_row else None,
-            date_completed=parse_datetime(
-                data_row['date_completed'].to_json()) if 'date_completed' in data_row else None,
-            date_expired=parse_datetime(data_row['date_expired'].to_json()),
-            date_issued=parse_datetime(data_row['date_issued'].to_json()),
-            days_to_complete=data_row.get('days_to_complete', None),
-            end_location_id=data_row.get('end_location_id', None),
-            for_corporation=data_row['for_corporation'],
-            issuer_corporation_id=data_row['issuer_corporation_id'],
-            issuer_id=data_row['issuer_id'],
-            start_location_id=data_row.get('start_location_id', None),
-            status=data_row['status'],
-            title=data_row.get('title', None),
-            type=data_row['type'],
+        contract_id = data_row['contract_id']
+        if EveContract.objects.filter(contract_id=contract_id).exists():
+            contract = EveContract.objects.get(contract_id=contract_id)
+            update = True 
+        else:
+            contract = EveContract()
+            update = False 
 
-        )
+        for key in data_row.keys():
+            try:
+                if type(data_row[key]) == pyswagger.primitives._time.Datetime:
+                    data_row[key] = data_row[key].to_json()
+                setattr(contract, str(key), data_row[key])
+            except AttributeError:
+                logger.error(f"Encountered unknown attribute {key} for EveContract")
+
+        if update:
+            return contract # the other fields will already be sorted out if we're doing an update
 
         if not 'resolved_ids' in kwargs:
             logger.warning(
@@ -1057,7 +1047,17 @@ class EveStructure(EveEntityData):
              "Can view a corporation's structures regardless of current membership"),
         ]
 
-        
+
+"""
+Static EVE Models
+These represent static EVE models that we need associations for.
+"""
+class EveCorporationRole(models.Model):
+    codename = models.CharField(max_length=64, unique=True)
+    name = models.CharField(max_length=64, unique=True)
+
+    def __str__(self):
+        return self.name 
             
 """
 EVE Connector Models
@@ -1090,6 +1090,7 @@ class PrimaryEveCharacterAssociation(models.Model):
         return EveCharacter.objects.filter(token__in=EveToken.objects.filter(user=self.user)).exclude(external_id=self.character.external_id)
 
 class EveCharacterInfo(models.Model):
+    # TODO: Merge this into EveCharacter
     character = models.OneToOneField(EveCharacter, on_delete=models.CASCADE, related_name="info")
     
     # game info
@@ -1108,8 +1109,60 @@ class EveCharacterInfo(models.Model):
     def __str__(self):
         return self.character.name
 
+class EveGroupRule(models.Model):
+    group = models.OneToOneField(Group, on_delete=models.CASCADE)
+    include_alts = models.BooleanField(default=True)
+    
+    # qualifiers 
+    characters = models.ManyToManyField("EveCharacter", blank=True)
+    corporations = models.ManyToManyField("EveCorporation", blank=True)
+    alliances = models.ManyToManyField("EveAlliance", blank=True)
+    roles = models.ManyToManyField("EveCorporationRole", blank=True)
 
-"""
-EVE Connector Reports
-Models for EVE Connector reports
-"""
+    @property
+    def current_user_list(self):
+        return User.objects.filter(group__contains=self.group)
+
+    @property
+    def valid_user_list(self):
+        django_filter = Q()
+        if self.characters.all():
+            django_filter &= Q(evecharacter__in=self.characters.all())
+        if self.corporations.all():
+            django_filter &= Q(
+                evecharacter__corporation__in=self.corporations.all())
+        if self.alliances.all():
+            django_filter &= Q(
+                evecharacter__corporation__alliance__in=self.alliances.all())
+        if self.roles.all():
+            django_filter &= Q(evecharacter__roles__in=self.roles.all())
+        if not self.include_alts:
+            django_filter &= ~Q(evecharacter__primary_to=None)
+        if django_filter != Q():
+            return User.objects.filter(eve_tokens__in=EveToken.objects.filter(django_filter))
+        else:
+            return User.objects.none()
+
+    @property 
+    def missing_user_list(self):
+        return self.valid_user_list.filter(~Q(groups=self.group))
+
+    @property 
+    def invalid_user_list(self):
+        django_filter = Q()
+        if self.characters.all():
+            django_filter &= Q(evecharacter__in=self.characters.all())
+        if self.corporations.all():
+            django_filter &= Q(
+                evecharacter__corporation__in=self.corporations.all())
+        if self.alliances.all():
+            django_filter &= Q(
+                evecharacter__corporation__alliance__in=self.alliances.all())
+        if self.roles.all():
+            django_filter &= Q(evecharacter__roles__in=self.roles.all())
+        if not self.include_alts:
+            django_filter &= ~Q(evecharacter__primary_to=None)
+        if django_filter != Q():
+            return User.objects.filter(groups=self.group).exclude(eve_tokens__in=EveToken.objects.filter(django_filter))
+        else:
+            return User.objects.none()

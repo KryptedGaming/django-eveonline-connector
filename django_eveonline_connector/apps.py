@@ -65,12 +65,25 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
                     interval=5,
                     interval_period="minutes",
                 )
+                
                 # Optional Task Bindings
                 bind.add_optional_task(
                     name="EVE: Update Structures",
                     task="django_eveonline_connector.tasks.update_structures",
                     interval=1,
                     interval_period="days",
+                )
+                bind.add_optional_task(
+                    name="EVE: Update Character Corporation Roles",
+                    task="django_eveonline_connector.tasks.update_character_roles",
+                    interval=1,
+                    interval_period="days",
+                )
+                bind.add_optional_task(
+                    name="EVE: Assign Eve Groups",
+                    task="django_eveonline_connector.tasks.assign_eve_groups",
+                    interval=30,
+                    interval_period="minutes",
                 )
                 bind.save()
             except BindException as e:
