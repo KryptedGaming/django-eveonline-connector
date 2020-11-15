@@ -270,11 +270,11 @@ class JournalJson(BaseDatatableView):
 
     def filter_queryset(self, qs):
         # implement searching
-        search = self.request.GET.get('search[amount]', None)
+        search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(Q(type__istartswith=search) |
-                           Q(first_party__istartswith=search) |
-                           Q(second_party__istartswith=search))
+            qs = qs.filter(Q(ref_type__istartswith=search) |
+                           Q(first_party_name__istartswith=search) |
+                           Q(second_party_name__istartswith=search))
 
         # return character
         external_id = self.request.GET.get('external_id')
