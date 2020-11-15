@@ -1,5 +1,5 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
-
+{% load static %}
 {% block header %}
 Contracts
 {% endblock %}
@@ -9,25 +9,80 @@ Contracts
 {% endblock %}
 
 {% block tab_content %}
-<table class="datatable table table-bordered table-hover text-center">
-    <thead>
-        <th class="col-lg-2 col-md-2 col-xs-1">Date Created</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">Contract Status</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">Contract Type</th>
-        <th class="col-lg-3 col-md-3 col-xs-1">From</th>
-        <th class="col-lg-3 col-md-3 col-xs-1">To</th>
-        <th class="col-lg-1 col-md-1 col-xs-1">Actions</th>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
+<div class="box box-info box-solid">
+    <div class="box-header">
+        <h3>Contract Summary</h3>
+    </div>
+    <div class="box-body">
+        <table id="contractSummary" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Entity</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Contracts</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Most Common</th>
+                
+            </thead>
+            <tbody>
+                {% for contract_data in contract_summary %}
+                <tr
+                {% if contract_data.is_alt %}
+                class="text-success "
+                {% endif %}
+                >
+                
+                    <td>
+                        <a onclick="setModalID({{contract_data.external_id}})" href="#" data-toggle="modal" data-target="#entityModal">{{contract_data.name}}</a>
+                        {% if contract_data.is_alt %}
+                        <i class="fa fa-check" aria-hidden="true" title="Confirmed Alt"></i>
+
+                        {% endif %}
+                    </td>
+                    <td>{{contract_data.count}}</td>
+                    <td>{{contract_data.most_common}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="box box-warning box-solid">
+    <div class="box-header">
+        <h3>Raw Contract List</h3>
+    </div>
+    <div class="box-body">
+        <table id="rawContractList" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Date Created</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Contract Status</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Contract Type</th>
+                <th class="col-lg-3 col-md-3 col-xs-1">From</th>
+                <th class="col-lg-3 col-md-3 col-xs-1">To</th>
+                <th class="col-lg-1 col-md-1 col-xs-1">Actions</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
     $.fn.DataTable.ext.pager.numbers_length = 5;
     $(function () {
-        $('table').DataTable({
+        $('#contractSummary').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'desc']],
+            'pageLength': 5,
+            "autoWidth": false,
+        })
+    })
+    $(function () {
+        $('#rawContractList').DataTable({
             'paging': true,
             'lengthChange': true,
             'searching': true,
@@ -45,5 +100,5 @@ Contracts
         $('#contracts').addClass('active');
     });
 </script>
-
+<script src="{% static 'django_eveonline_connector/js/entity_modal.js' %}"></script>
 {% endblock %}

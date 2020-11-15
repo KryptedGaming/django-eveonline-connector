@@ -1,14 +1,62 @@
 from django.shortcuts import render, redirect
 from django.db.models import Q
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.generic import TemplateView
 from django_eveonline_connector.models import EveCharacter, EveEntity
 from django_eveonline_connector.models import EveAsset, EveJumpClone, EveContact, EveContract, EveSkill, EveJournalEntry, EveTransaction
+from django_eveonline_connector.models import EveClient
+from django_eveonline_connector.utilities.esi.universe import resolve_id
 from django_datatables_view.base_datatable_view import BaseDatatableView
 from django.contrib.auth.decorators import login_required, permission_required
 from django.utils.html import escape
+import json 
 
+# Utilities 
+@login_required
+def get_entity_info(request):
+    external_id = None 
+    if 'external_id' not in request.GET:
+        return HttpResponse(status=400)
+    else:
+        external_id = request.GET['external_id']
+    print(external_id)
+    
+    entity = resolve_id(external_id)
+
+    if not entity:
+        return HttpResponse(status=404)
+
+    if entity['type'] == "character":
+        response = EveClient.call('get_characters_character_id', character_id=external_id).data
+        return JsonResponse({
+            "type": "character",
+            "name": response['name'],
+            "external_id": external_id,
+        })
+    elif entity['type'] == "corporation":
+        response = EveClient.call('get_corporations_corporation_id', corporation_id=external_id).data
+        return JsonResponse({
+            "type": "corporation",
+            "name": response['name'],
+            "ticker": response['ticker'],
+            "external_id": external_id,
+            "alliance_id": response['alliance_id'],
+        })
+    elif entity['type'] == "alliance":
+        response = EveClient.call('get_alliances_alliance_id', alliance_id=external_id).data
+        return JsonResponse({
+            "type": "alliance", 
+            "name": response['name'],
+            "ticker": response['ticker'],
+            "external_id": external_id,
+        })
+    else:
+        return HttpResponse(status=500)
+
+
+
+# Character Lookups
 @login_required
 @permission_required('django_eveonline_connector.view_eveasset', raise_exception=True)
 def get_assets(request):
@@ -131,7 +179,10 @@ class ContactJson(BaseDatatableView):
         # implement searching
         search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(Q(name__istartswith=search))
+            qs = qs.filter(
+                Q(contact_name__istartswith=search) | 
+                Q(contact_type__istartswith=search)
+                )
 
         # return character
         external_id = self.request.GET.get('external_id')
@@ -141,8 +192,8 @@ class ContactJson(BaseDatatableView):
         json_data = []
         for item in qs:
             json_data.append([
-                item.contact_name,
-                item.contact_type,
+                '<a onclick="setModalID(%s)" href="#" data-toggle="modal" data-target="#entityModal">%s</a>' % (item.contact_id, item.contact_name),
+                item.contact_type.title(),
                 item.standing
             ])
         return json_data
@@ -159,9 +210,10 @@ class ContractJson(BaseDatatableView):
         # implement searching
         search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(Q(issued_by__istartswith=search) |
-                           Q(issued_to__istartswith=search) |
-                           Q(accepted_by__istartswith=search)
+            qs = qs.filter(Q(issuer_name__istartswith=search) |
+                           Q(assignee_name__istartswith=search) |
+                           Q(type__istartswith=search) | 
+                           Q(status__istartswith=search)
                            )
 
         # return character

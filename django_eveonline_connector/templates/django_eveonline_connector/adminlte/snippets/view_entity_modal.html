@@ -1,0 +1,50 @@
+
+<!-- Modal -->
+<div id="entityModal" class="modal fade" role="dialog">
+    <p id="entityModalID" hidden></p>
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 id="entityModalName" class="modal-title">Entity View</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div id="entityModalProfilePicture" class="col-md-3">
+                        <i style="font-size: 128px" class="fa fa-spinner fa-spin"></i>
+                        <!-- <img class="profile-user-img img-responsive img-circle"
+                            src="https://imageserver.eveonline.com/Character/634915984_128.jpg" alt="User profile picture"> -->
+                    </div>
+                    <div class="col-md-9">
+                        <ul class="list-group list-group-unbordered">
+                            <li class="list-group-item">
+                                <b>Name</b>
+                                <p class="pull-right" id="entityModalDetailName">
+                                    <i class="fa fa-spinner fa-spin"></i>
+                                </p>
+                            </li>
+                            <li class="list-group-item">
+                                <b>Affiliation</b>
+                                <p class="pull-right" id="entityModalAffiliation">
+                                    <i class="fa fa-spinner fa-spin"></i>
+                                </p>
+                            </li>
+                            <li class="list-group-item">
+                                <b>Links</b>
+                                <p class="pull-right" id="entityModalLinks">
+                                    <i class="fa fa-spinner fa-spin"></i>
+                                </p>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="hideModalActions()" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+
+    </div>
+</div>

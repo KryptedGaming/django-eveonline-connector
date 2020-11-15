@@ -192,7 +192,7 @@ def update_character_assets(character_id, *args, **kwargs):
 def update_character_jumpclones(character_id, *args, **kwargs):
     op = 'get_characters_character_id_clones'
     data_model = EveJumpClone
-    update_character_eveentitydata(op, *args, **kwargs, character_id=character_id, data_model=data_model)
+    update_character_eveentitydata(op, *args, **kwargs, character_id=character_id, data_model=data_model, delete=True)
 
 
 @shared_task 
@@ -200,7 +200,7 @@ def update_character_contacts(character_id, *args, **kwargs):
     op = 'get_characters_character_id_contacts'
     data_model = EveContact
     update_character_eveentitydata(
-        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+        op, *args, **kwargs, character_id=character_id, data_model=data_model, delete=True)
 
 @shared_task
 def update_character_contracts(character_id, *args, **kwargs):
@@ -215,7 +215,7 @@ def update_character_skills(character_id, *args, **kwargs):
     op = 'get_characters_character_id_skills'
     data_model = EveSkill
     response = update_character_eveentitydata(
-        op, *args, **kwargs, character_id=character_id, data_model=data_model)
+        op, *args, **kwargs, character_id=character_id, data_model=data_model, delete=True)
 
     character = EveCharacter.objects.get(external_id=character_id)
     info = EveCharacterInfo.objects.get_or_create(character=character)[0]

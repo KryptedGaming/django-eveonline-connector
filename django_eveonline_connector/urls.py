@@ -69,6 +69,12 @@ urlpatterns += [
 #          name="django-eveonline-connector-view-alliance"),
 # ]
 
+# Utilities
+urlpatterns += [
+    path('api/entity/resolve', api.get_entity_info,
+        name="django-eveonline-connector-api-get-entity-info"),
+]
+
 # JSON
 urlpatterns += [
     path('api/assets/', api.get_assets,

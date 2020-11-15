@@ -4,6 +4,8 @@ from django_eveonline_connector.models import EveCharacter, EveSkill, PrimaryEve
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django_eveonline_connector.tasks import *
+from django.db.models import Count
+from django_eveonline_connector.utilities.esi.universe import resolve_names
 
 import logging
 logger = logging.getLogger(__name__)
@@ -98,11 +100,20 @@ def view_character(request, external_id):
 @permission_required('django_eveonline_connector.view_eveasset', raise_exception=True)
 def view_character_assets(request, external_id):
     character = EveCharacter.objects.get(external_id=external_id)
+    asset_summary = []
+    asset_locations = EveAsset.objects.filter(entity__external_id=external_id).exclude(
+        location_name='').values_list('location_name', flat=True).distinct()
+    for location in asset_locations:
+        asset_summary.append({
+            "location_name": location,
+            "count":  EveAsset.objects.filter(entity__external_id=external_id, location_name=location).count(),
+        })
     return render(
         request,
         'django_eveonline_connector/adminlte/characters/view_character_assets.html',
         context={
             'character': character,
+            'asset_summary': asset_summary,
         }
     )
 
@@ -125,12 +136,49 @@ def view_character_clones(request, external_id):
 @permission_required('django_eveonline_connector.view_evecharacter', raise_exception=True)
 @permission_required('django_eveonline_connector.view_evecontract', raise_exception=True)
 def view_character_contracts(request, external_id):
+    
     character = EveCharacter.objects.get(external_id=external_id)
+    contract_summary = []
+    contract_entities = set(list(EveContract.objects.filter(entity__external_id=external_id).values_list(
+        'assignee_name')) + list(EveContract.objects.filter(entity__external_id=external_id).values_list('issuer_name')))
+    for name in contract_entities:
+        name = name[0]
+        try:
+            related_character = EveCharacter.objects.get(name=name)
+            is_alt = related_character.token.user == character.token.user
+        except Exception as e:
+            is_alt = False 
+
+        valid_contracts = EveContract.objects.filter(
+            Q(entity__external_id=external_id) & (Q(assignee_name=name) | Q(issuer_name=name)))
+        
+        if name == character.name:
+            continue
+
+        # resolve ID from database
+        contract = EveContract.objects.filter(Q(assignee_name=name)).first()
+        if not contract:
+            contract = EveContract.objects.filter(
+                Q(issuer_name=name)).first()
+            summary_entity_id = contract.issuer_id
+        else:
+            summary_entity_id = contract.assignee_id
+
+        contract_summary.append({
+            "name": name, 
+            "external_id": summary_entity_id,
+            "count": valid_contracts.count(),
+            "most_common": valid_contracts.values("type").annotate(count=Count('type')).order_by("-count")[0]['type'].title().replace("_", " "),
+            "is_alt": is_alt
+        })
+
+    print(contract_entities)
     return render(
         request,
         'django_eveonline_connector/adminlte/characters/view_character_contracts.html',
         context={
             'character': character,
+            'contract_summary': contract_summary
         }
     )
 
@@ -173,11 +221,46 @@ def view_character_skills(request, external_id):
 @permission_required('django_eveonline_connector.view_evejournalentry', raise_exception=True)
 def view_character_journal(request, external_id):
     character = EveCharacter.objects.get(external_id=external_id)
+    journal_summary = []
+    journal_entities = set(list(EveJournalEntry.objects.filter(entity__external_id=external_id, ref_type__in=["player_trading", "player_donation"]).values_list(
+        'first_party_name')) + list(EveJournalEntry.objects.filter(entity__external_id=external_id, ref_type__in=["player_trading", "player_donation"]).values_list('second_party_name')))
+    for name in journal_entities:
+        name = name[0]
+        try:
+            related_character = EveCharacter.objects.get(name=name)
+            is_alt = related_character.token.user == character.token.user
+        except Exception as e:
+            is_alt = False
+
+        valid_entries = EveJournalEntry.objects.filter(
+            Q(entity__external_id=external_id) & (Q(first_party_name=name) | Q(second_party_name=name)))
+
+        if name == character.name:
+            continue
+
+        # resolve ID from database
+        entry = EveJournalEntry.objects.filter(
+            Q(first_party_name=name)).first()
+        if not entry:
+            entry = EveJournalEntry.objects.filter(
+                Q(second_party_name=name)).first()
+            summary_entity_id = entry.second_party_id
+        else:
+            summary_entity_id = entry.first_party_id
+
+        journal_summary.append({
+            "name": name,
+            "external_id": summary_entity_id,
+            "count": valid_entries.count(),
+            "most_common": valid_entries.values("ref_type").annotate(count=Count('ref_type')).order_by("-count")[0]['ref_type'].title().replace("_", " "),
+            "is_alt": is_alt
+        })
     return render(
         request,
         'django_eveonline_connector/adminlte/characters/view_character_journal.html',
         context={
             'character': character,
+            "journal_summary": journal_summary,
         }
     )
 

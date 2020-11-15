@@ -1,5 +1,5 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
-
+{% load static %}
 {% block header %}
 Journal
 {% endblock %}
@@ -9,24 +9,74 @@ Journal
 {% endblock %}
 
 {% block tab_content %}
-<table class="datatable table table-bordered table-hover text-center">
-    <thead>
-        <th class="col-lg-2 col-md-2 col-xs-1">Date</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">Type</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">First Party</th>
-        <th class="col-lg-3 col-md-3 col-xs-1">Second Party</th>
-        <th class="col-lg-3 col-md-3 col-xs-1">Amount</th>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
+<div class="box box-info box-solid">
+    <div class="box-header">
+        <h3>Journal Summary</h3>
+    </div>
+    <div class="box-body">
+        <table id="journalSummary" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Entity</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Entries</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Most Common</th>
+
+            </thead>
+            <tbody>
+                {% for journal_data in journal_summary %}
+                <tr {% if journal_data.is_alt %} class="text-success " {% endif %}>
+                    <td>
+                        <a onclick="setModalID({{journal_data.external_id}})" href="#" data-toggle="modal"
+                            data-target="#entityModal">{{journal_data.name}}</a>
+                        {% if journal_data.is_alt %}
+                        <i class="fa fa-check" aria-hidden="true" title="Confirmed Alt"></i>
+                        {% endif %}
+                    </td>
+                    <td>{{journal_data.count}}</td>
+                    <td>{{journal_data.most_common}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="box box-warning box-solid">
+    <div class="box-header">
+        <h3>Raw Journal Entries</h3>
+    </div>
+    <div class="box-body">
+        <table id="rawJournalTable" class="datatable table table-bordered table-hover text-center">
+            <thead>
+                <th class="col-lg-2 col-md-2 col-xs-1">Date</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">Type</th>
+                <th class="col-lg-2 col-md-2 col-xs-1">First Party</th>
+                <th class="col-lg-3 col-md-3 col-xs-1">Second Party</th>
+                <th class="col-lg-3 col-md-3 col-xs-1">Amount</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
     $.fn.DataTable.ext.pager.numbers_length = 5;
     $(function () {
-        $('table').DataTable({
+        $('#journalSummary').DataTable({
+            'paging': true,
+            'lengthChange': true,
+            'searching': true,
+            'ordering': true,
+            'order': [[1, 'desc']],
+            'pageLength': 5,
+            "autoWidth": false,
+        })
+    })
+    $(function () {
+        $('#rawJournalTable').DataTable({
             'paging': true,
             'lengthChange': true,
             'searching': true,
@@ -44,5 +94,5 @@ Journal
         $('#journal').addClass('active');
     });
 </script>
-
+<script src="{% static 'django_eveonline_connector/js/entity_modal.js' %}"></script>
 {% endblock %}

@@ -5,6 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def resolve_id(id):
+    return resolve_ids_with_types([95465499, id])[int(id)]
+
 def resolve_ids(ids):
     resolved_ids = EveClient.call('post_universe_names', ids=ids).data 
     response = {}
