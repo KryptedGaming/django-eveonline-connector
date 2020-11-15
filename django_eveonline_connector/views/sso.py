@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django_eveonline_connector.models import EveClient, EveToken, EveCharacter, EveScope, EveCorporation, PrimaryEveCharacterAssociation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django_eveonline_connector.tasks import update_character
 
 import logging
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def sso_callback(request):
             character=character
         )
 
-    # update_character_corporation.apply_async(args=[character.external_id])
+    update_character.apply_async(args=[character.external_id])
 
     return redirect('app-dashboard')  # TODO: Redirect to EVE Character view
 

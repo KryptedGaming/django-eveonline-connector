@@ -98,6 +98,38 @@ def update_characters(jitter_max=1800):
                 args=[eve_character.external_id],
                 countdown=jitter)
 
+def update_character(character_id):
+    eve_character = EveCharacter.objects.get(character_id)
+    eve_character.update_character_corporation()
+
+    update_character_assets.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_contacts.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_contracts.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_journal.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_jumpclones.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_skills.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
+    update_character_transactions.apply_async(
+        args=[eve_character.external_id],
+        countdown=jitter)
+
 @shared_task
 def update_character_roles():
     for eve_character in EveCharacter.objects.all():
