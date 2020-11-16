@@ -1,0 +1,692 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="shortcut icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-6.1.5">
+    
+    
+      
+        <title>User Guide - Django EVE Online Connector</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.21aed14c.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.196e0c26.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#2094f3">
+        
+      
+    
+    
+    
+      
+        
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="blue" data-md-color-accent="white">
+      
+  
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href=".." title="Django EVE Online Connector" class="md-header-nav__button md-logo" aria-label="Django EVE Online Connector">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      
+        <div class="md-header-nav__ellipsis">
+          <span class="md-header-nav__topic md-ellipsis">
+            Django EVE Online Connector
+          </span>
+          <span class="md-header-nav__topic md-ellipsis">
+            
+              User Guide
+            
+          </span>
+        </div>
+      
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Django EVE Online Connector" class="md-nav__button md-logo" aria-label="Django EVE Online Connector">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    Django EVE Online Connector
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href=".." class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../features/" class="md-nav__link">
+      Features
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        User Guide
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+    
+    <a href="./" class="md-nav__link md-nav__link--active">
+      User Guide
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-database" class="md-nav__link">
+    Static Database
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permissions" class="md-nav__link">
+    Permissions
+  </a>
+  
+    <nav class="md-nav" aria-label="Permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#general-permissions" class="md-nav__link">
+    General Permissions
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#special-permissions" class="md-nav__link">
+    Special Permissions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-usage" class="md-nav__link">
+    General Usage
+  </a>
+  
+    <nav class="md-nav" aria-label="General Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracking-corporations" class="md-nav__link">
+    Tracking Corporations
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-tasks" class="md-nav__link">
+    Optional Tasks
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-rules" class="md-nav__link">
+    Group Rules
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-database" class="md-nav__link">
+    Static Database
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permissions" class="md-nav__link">
+    Permissions
+  </a>
+  
+    <nav class="md-nav" aria-label="Permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#general-permissions" class="md-nav__link">
+    General Permissions
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#special-permissions" class="md-nav__link">
+    Special Permissions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-usage" class="md-nav__link">
+    General Usage
+  </a>
+  
+    <nav class="md-nav" aria-label="General Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracking-corporations" class="md-nav__link">
+    Tracking Corporations
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-tasks" class="md-nav__link">
+    Optional Tasks
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-rules" class="md-nav__link">
+    Group Rules
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                <h1 id="user-guide">User Guide</h1>
+<h2 id="installation">Installation</h2>
+<ol>
+<li>
+<p>Install <code>django-eveonline_connector</code></p>
+<p><code>pip install django_eveonline_connector</code></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Krypted Platform users, specify <code>django_eveonline_connector</code> in <code>PIP_INSTALLS</code>.</p>
+</div>
+</li>
+<li>
+<p>Add <code>django_eveonline_connector</code> to your <code>INSTALLED_APPS</code></p>
+</li>
+</ol>
+<h2 id="static-database">Static Database</h2>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Krypted Platform users, skip this section. The static database is included in your base image.</p>
+</div>
+<p>The static database is highly recommended, without this many services will be hamstringed by ESI. We recommend the SQLLite database from FuzzWorks.</p>
+<ol>
+<li>Install BZIP for static export file <code>apt-get install bzip</code></li>
+<li>Get the export <code>wget https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2</code></li>
+<li>Decompress <code>bunzip2 sqlite-latest.sqlite.bz2</code></li>
+<li>Rename (optional) <code>mv sqlite-latest.sqlite eve_static.sqlite</code></li>
+<li>Add the database to the settings file (eve_static is what the code looks for)</li>
+</ol>
+<pre><code>DATABASES = {
+    'eve_static': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'eve_static_export.sqlite'),
+    }
+}
+</code></pre>
+
+<h2 id="configuration">Configuration</h2>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Krypted Platform users, you will be using Admin Panel settings to configure your package. Navigate to <strong>Admin Panel</strong> from your homepage sidebar, edit settings under the <strong>Django EVE Connector</strong> section.</p>
+</div>
+<p>There are two ways to configure <code>django_eveonline_connector</code>:</p>
+<ol>
+<li>Environment Variables</li>
+<li>Admin Panel Settings </li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="left">Variable</th>
+<th align="center">Description</th>
+<th align="center">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><code>ESI_BASE_URL</code></td>
+<td align="center">ESI Swagger Version</td>
+<td align="center"><code>https://esi.evetech.net/latest/swagger.json?datasource=tranquility</code></td>
+</tr>
+<tr>
+<td align="left"><code>ESI_CLIENT_ID</code></td>
+<td align="center">Client ID from Developer Application</td>
+<td align="center"><code>1239812934871239</code></td>
+</tr>
+<tr>
+<td align="left"><code>ESI_SECRET_KEY</code></td>
+<td align="center">Secret Key from Developer Application</td>
+<td align="center"><code>aiosdfjasodjifajoi234aisdfa</code></td>
+</tr>
+<tr>
+<td align="left"><code>ESI_CALLBACK_URL</code></td>
+<td align="center">Callback URL from Developer Application</td>
+<td align="center">http://<strong>MY.DOMAIN</strong>/eveonline/sso/callback</td>
+</tr>
+</tbody>
+</table>
+<p>To create a developer application, navigate <a href="https://developers.eveonline.com/applications">here</a>. </p>
+<ol>
+<li>Log in and create a new application</li>
+<li>Select <strong>Authentication &amp; API Access</strong> and select all scopes </li>
+<li>Insert your callback URL (e.g http://<strong>MY.DOMAIN</strong>/eveonline/sso/callback)</li>
+<li>Save the application</li>
+</ol>
+<p>Use the fields from the application to fill out the settings from above. </p>
+<h2 id="permissions">Permissions</h2>
+<p>Your user groups will need permissions to interact with certain parts of the application. </p>
+<h3 id="general-permissions">General Permissions</h3>
+<table>
+<thead>
+<tr>
+<th align="left">Permission Class</th>
+<th align="center">Action</th>
+<th align="center">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">eve scope</td>
+<td align="center">CRUD</td>
+<td align="center">User with staff status can modify scope settings</td>
+</tr>
+<tr>
+<td align="left">eve character</td>
+<td align="center">View</td>
+<td align="center">User can view EVE characters</td>
+</tr>
+<tr>
+<td align="left">eve character</td>
+<td align="center">Change</td>
+<td align="center">User can refresh EVE character data</td>
+</tr>
+<tr>
+<td align="left">eve character</td>
+<td align="center">Delete</td>
+<td align="center">User with staff status can delete EVE Characters</td>
+</tr>
+<tr>
+<td align="left">eve corporation</td>
+<td align="center">View</td>
+<td align="center">User can view tracked corporations</td>
+</tr>
+<tr>
+<td align="left">eve alliance</td>
+<td align="center">View</td>
+<td align="center">User can view tracked alliances</td>
+</tr>
+<tr>
+<td align="left">eve asset</td>
+<td align="center">View</td>
+<td align="center">User can view character assets (requires eve character view)</td>
+</tr>
+<tr>
+<td align="left">eve jump clone</td>
+<td align="center">View</td>
+<td align="center">User can view character clones</td>
+</tr>
+<tr>
+<td align="left">eve contact</td>
+<td align="center">View</td>
+<td align="center">User can view eve character contacts</td>
+</tr>
+<tr>
+<td align="left">eve contract</td>
+<td align="center">View</td>
+<td align="center">User can view eve character contracts</td>
+</tr>
+<tr>
+<td align="left">eve skill</td>
+<td align="center">View</td>
+<td align="center">User can view eve character skills</td>
+</tr>
+<tr>
+<td align="left">eve journal entry</td>
+<td align="center">View</td>
+<td align="center">User can view eve character journal entries</td>
+</tr>
+<tr>
+<td align="left">eve transaction</td>
+<td align="center">View</td>
+<td align="center">User can view eve character transactions</td>
+</tr>
+<tr>
+<td align="left">eve structure</td>
+<td align="center">View</td>
+<td align="center">User can view eve corporation structures (only their corporation)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="special-permissions">Special Permissions</h3>
+<table>
+<thead>
+<tr>
+<th align="left">Permission Class</th>
+<th align="center">Additional Permission</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">eve structure</td>
+<td align="center">Corporation bypass (can view all structures)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="general-usage">General Usage</h2>
+<h3 id="tracking-corporations">Tracking Corporations</h3>
+<p>By default, we do not automatically keep all entity data up to date. To track a corporation and its related data (structures, etc), be sure to toggle <code>track_corporation</code> on the corporation in the <strong>Admin Panel.</strong></p>
+<p>To constantly keep the character data (skills, contracts, etc) up to date for members of a corporation, enable <code>track_characters</code>. </p>
+<h3 id="optional-tasks">Optional Tasks</h3>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>Only applies to Krypted users.</p>
+</div>
+<p>There are additional tasks that you can enable, such as structure tracking. Make sure you visit <strong>Setup</strong> in the Krypted Platform sidebar. </p>
+<h3 id="group-rules">Group Rules</h3>
+<p>Group rules are rules that apply a Django group based on characters, corporations, and more. You can add these in the <strong>Admin Panel</strong>. </p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid" aria-label="Footer">
+        
+          <a href="../features/" class="md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-footer-nav__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+            </div>
+            <div class="md-footer-nav__title">
+              <div class="md-ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Features
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../assets/javascripts/vendor.7e0ee788.min.js"></script>
+      <script src="../assets/javascripts/bundle.b3a72adc.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}</script>
+      
+      <script>
+        app = initialize({
+          base: "..",
+          features: [],
+          search: Object.assign({
+            worker: "../assets/javascripts/worker/search.4ac00218.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+    
+  </body>
+</html>
