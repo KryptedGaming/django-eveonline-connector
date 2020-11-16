@@ -32,6 +32,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
     install_requires=[
+        'Django==2.2.13',
         'esipy==1.0.0',
         'celery>=4.3.0',
         'django_datatables_view==1.19.1',
