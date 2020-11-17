@@ -98,6 +98,7 @@ def update_characters(jitter_max=1800):
                 args=[eve_character.external_id],
                 countdown=jitter)
 
+@shared_task
 def update_character(character_id):
     eve_character = EveCharacter.objects.get(character_id)
     eve_character.update_character_corporation()
