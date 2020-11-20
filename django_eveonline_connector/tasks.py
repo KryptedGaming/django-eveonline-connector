@@ -100,7 +100,7 @@ def update_characters(jitter_max=1800):
 
 @shared_task
 def update_character(character_id):
-    eve_character = EveCharacter.objects.get(character_id)
+    eve_character = EveCharacter.objects.get(external_id=character_id)
     eve_character.update_character_corporation()
 
     update_character_assets.apply_async(
