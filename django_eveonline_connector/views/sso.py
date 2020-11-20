@@ -52,7 +52,7 @@ def sso_callback(request):
         )
 
     # if no primary user, set 
-    if not PrimaryEveCharacterAssociation(user=request.user):
+    if not PrimaryEveCharacterAssociation.objects.filter(user=request.user).exists():
         PrimaryEveCharacterAssociation.objects.create(
             user=request.user,
             character=character
@@ -60,11 +60,16 @@ def sso_callback(request):
 
     update_character.apply_async(args=[character.external_id])
 
-    return redirect('app-dashboard')  # TODO: Redirect to EVE Character view
+    return redirect('/')
 
 @login_required
 def add_sso_token(request):
-    return redirect(EveClient.get_instance().get_sso_url())
+    try:
+        sso_url = EveClient.get_instance().get_sso_url()
+        return redirect(sso_url)
+    except Exception as e:
+        messages.warning(request, "Eve Settings are not configured correctly. Contact your administrator.")
+        return redirect('/')
 
 @login_required
 def update_sso_token(request, token_id):
@@ -77,7 +82,10 @@ def update_sso_token(request, token_id):
 def remove_sso_token(request, pk):
     eve_token = EveToken.objects.get(pk=pk)
     if request.user == eve_token.user:
+        if PrimaryEveCharacterAssociation.objects.filter(character=eve_token.evecharacter).exists():
+            PrimaryEveCharacterAssociation.objects.filter(character=eve_token.evecharacter).delete()
         eve_token.delete()
+
         messages.success(request, "Successfully deleted EVE Online character")
     else:
         messages.error(request, "You cannot delete someone elses token.")
