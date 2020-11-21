@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, reverse
 from django.db.models import Q
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
 from django.views.generic import TemplateView
 from django_eveonline_connector.models import EveCharacter, EveEntity, EveToken
@@ -134,16 +135,16 @@ class CharacterJson(BaseDatatableView):
         else:
             search_filter = Q() 
 
-        if self.request.user.has_perm('django_eveonline_connector.view_all_characters'):
-            return qs.filter()
+        if self.request.user.has_perm('django_eveonline_connector.view_all_characters'): 
+            return qs.filter(search_filter)
         elif self.request.user.has_perm('django_eveonline_connector.view_alliance_characters'):
-            corporation_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation', flat=True)
+            corporation_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation', flat=True)
             return qs.filter(corporation__pk__in=corporation_set)
         elif self.request.user.has_perm('django_eveonline_connector.view_corporation_characters'):
-            alliance_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation__alliance', flat=True)
+            alliance_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation__alliance', flat=True)
             return qs.filter(corporation__pk__in=alliance_set)
         else:
-            return qs.filter(token__user=self.request.user)
+            return qs.filter(Q(token__user=self.request.user) | search_filter)
 
     
 
@@ -151,7 +152,7 @@ class CharacterJson(BaseDatatableView):
         json_data = []
         for character in qs:
             try:
-                if character.token.valid:
+                if character.token and character.token.valid:
                     status = """
                     <div class="text-center">
                     <i class="fa fa-check text-success"></i>
@@ -174,13 +175,18 @@ class CharacterJson(BaseDatatableView):
             <img width="16px" src="https://imageserver.eveonline.com/Character/%s_64.jpg" class="img-circle">
             <a href="%s">%s</a>
             """ % (character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.external_id}), character)
-            
-            primary_character = character.token.user.primary_evecharacter.character
-            primary_character_row = """
-            <img width="16px" src="https://imageserver.eveonline.com/Character/%s_64.jpg" class="img-circle">
-            <a href="%s">%s</a>
-            """ % (primary_character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.token.user.primary_evecharacter.character.external_id}), character.token.user.primary_evecharacter.character.name)
-            
+            try:
+                if character.token:
+                    primary_character = character.token.user.primary_evecharacter.character
+                    primary_character_row = """
+                    <img width="16px" src="https://imageserver.eveonline.com/Character/%s_64.jpg" class="img-circle">
+                    <a href="%s">%s</a>
+                    """ % (primary_character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.token.user.primary_evecharacter.character.external_id}), character.token.user.primary_evecharacter.character.name)
+                else:
+                    primary_character_row=""
+            except User.primary_evecharacter.RelatedObjectDoesNotExist as e: 
+                primary_character_row="" 
+
             if character.corporation:
                 corporation_row = """
                 <img width="16px" src="https://imageserver.eveonline.com/Corporation/%s_64.png" class="img-circle">
@@ -189,7 +195,7 @@ class CharacterJson(BaseDatatableView):
             else:
                 corporation_row = ""
 
-            if character.corporation.alliance:
+            if character.corporation and character.corporation.alliance:
                 alliance_row = """
                 <img width="16px" src="https://imageserver.eveonline.com/Alliance/%s_64.png" class="img-circle">
                 <a href="#">%s</a>
