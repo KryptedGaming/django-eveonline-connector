@@ -1,56 +1,50 @@
 {% extends "django_eveonline_connector/adminlte/corporations/view_corporation.html" %}
 
-{% block header %}
-Structures
-{% endblock %}
-
-{% block description %}
-{{corporation.name}}
+{% block title %}
+Corporation Structures
 {% endblock %}
 
 {% block tab_content %}
-<div class="box box-success box-solid">
-    <div class="box-header">
-        <h3 class="box-title">Structures</h3>
+<div class="card card-success card-outline">
+    <div class="card-header">
+        <h3 class="card-title">Structures</h3>
     </div>
-    <div class="box-body">
-        <div class="dataTables_wrapper form-inline dt-bootstrap">
-            <table class="table table-bordered table-striped dataTable">
-                <thead>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Structure</th>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Fuel Expires</th>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Timer</th>
-                </thead>
-                <tbody>
-                    {% for structure in structures %}
-                    <tr>
-                        <td>
-                            <img src="https://images.evetech.net/types/{{structure.type_id}}/icon?size=32"
-                                class="img-circle" alt="Avatar" width="32px" title="{{character.character.name}}">
-                            {{structure.name}}
-                        </td>
-                        <td>
-                            {% if structure.fuel_expires %}
-                            <p
-                            {% if structure.fuel_expires_soon %}
-                            class="text-danger"
-                            {% endif %}>
-                            {{structure.fuel_expires}}
-                            </p>
-                            {% else %}
-                            <p class="text-warning"><b>Low Power</b></p>
-                            {% endif %}
-                            
-                            
-                        </td>
-                        <td>
-                            {{structure.reinforcement_time|date:'H' }}:00
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="card-body">
+        <table class="table table-bordered table-striped dataTable">
+            <thead>
+                <th class="col-lg-4 col-md-4 col-xs-2">Structure</th>
+                <th class="col-lg-4 col-md-4 col-xs-2">Fuel Expires</th>
+                <th class="col-lg-4 col-md-4 col-xs-2">Timer</th>
+            </thead>
+            <tbody>
+                {% for structure in structures %}
+                <tr>
+                    <td>
+                        <img src="https://images.evetech.net/types/{{structure.type_id}}/icon?size=32"
+                            class="img-circle" alt="Avatar" width="32px" title="{{character.character.name}}">
+                        {{structure.name}}
+                    </td>
+                    <td>
+                        {% if structure.fuel_expires %}
+                        <p
+                        {% if structure.fuel_expires_soon %}
+                        class="text-danger"
+                        {% endif %}>
+                        {{structure.fuel_expires}}
+                        </p>
+                        {% else %}
+                        <p class="text-warning"><b>Low Power</b></p>
+                        {% endif %}
+                        
+                        
+                    </td>
+                    <td>
+                        {{structure.reinforcement_time|date:'H' }}:00
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 

@@ -3,6 +3,7 @@ from django_eveonline_connector.models import EveClient, EveToken, EveCharacter,
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django_eveonline_connector.tasks import update_character
+from django.conf import settings
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,7 +59,8 @@ def sso_callback(request):
             character=character
         )
 
-    update_character.apply_async(args=[character.external_id])
+    if not settings.DEBUG:
+        update_character.apply_async(args=[character.external_id])
 
     return redirect('/')
 

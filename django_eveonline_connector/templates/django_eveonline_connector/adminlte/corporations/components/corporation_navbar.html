@@ -1,0 +1,10 @@
+<div class="card-header p-2">
+    <ul class="nav nav-pills">
+        <li class="nav-item" ><a class="nav-link" id="roster"
+                href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">Roster</a>
+        </li>
+        <li class="nav-item" ><a class="nav-link" id="structures" href="{% url 'django-eveonline-connector-view-corporation-structures' corporation.external_id %}">Structures</a>
+        </li>
+    </ul>
+    
+</div>

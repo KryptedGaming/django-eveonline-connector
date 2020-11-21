@@ -12,8 +12,8 @@
         <tr>
 
             <td class="col-lg-6 col-xs-6">
-                <div class="pull-left" style="padding-right: 8px;">
-                    <img width="36px" style="text-align: center; border: 3px solid #000; padding: 0;"
+                <div class="float-left" style="padding-right: 8px;">
+                    <img width="48px" style="text-align: center; border: 3px solid #000; padding: 0;"
                         src="https://imageserver.eveonline.com/Character/{{token.evecharacter.external_id}}_64.jpg" />
                 </div>
                 <div>
@@ -34,8 +34,8 @@
             <td class="col-lg-6 col-xs-6">
                 <div style="display: flex;" class="btn-group btn-block">
                     {% if token.valid %}
-                    <a href="{% url 'django-eveonline-connector-character-refresh-public' token.evecharacter.external_id %}" style="flex: 1" class="btn btn-success"><i class="fa fa-refresh"></i></a>
-                    <a href="{% url 'django-eveonline-connector-sso-token-remove' token.pk %}" style="flex: 1" class="btn btn-danger"><i class="fa fa-times"></i></a>
+                    <a href="{% url 'django-eveonline-connector-character-refresh-public' token.evecharacter.external_id %}" style="flex: 1" class="btn btn-success"><i class="far fas fa-sync"></i></a>
+                    <a href="{% url 'django-eveonline-connector-sso-token-remove' token.pk %}" style="flex: 1" class="btn btn-danger"><i class="fas far fa-times"></i></a>
                     {% else %}
                     <a href="{% url 'django-eveonline-connector-sso-token-update' token.pk %}" style="flex: 1" class="btn btn-warning">Update Token</a>
                     {% endif %}
