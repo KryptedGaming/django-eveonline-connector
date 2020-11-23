@@ -1,17 +1,13 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 
-{% block header %}
-Contracts
-<button id="generate-report-button" onclick="createReport()" class="btn btn-warning pull-right">Refresh Audit</button>
-{% endblock %}
-
-{% block description %}
-{{character.name}}
-<p id="{{character.external_id}}" class="external-id"></p>
+{% block title %}
+Audit
 
 {% endblock %}
 
 {% block tab_content %}
+<p id="{{character.external_id}}" class="external-id"></p>
+
 {% if 'django_eveonline_doctrine_manager' in INSTALLED_APPS %}
 <!-- Doctrine Audit -->
 <div class="card card-warning card-outline">
@@ -19,12 +15,13 @@ Contracts
         <h3 class="card-title">
             Doctrine Audit
         </h3>
+        <button id="generate-report-button" onclick="createReport()" class="btn btn-warning float-right">Refresh Audit</button>
     </div>
     <div class="card-body">
         <table id="doctrine-audit-table" class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Doctrine</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Status</th>
+                <th>Doctrine</th>
+                <th>Status</th>
             </thead>
             <tbody>
                 <tr>
@@ -46,12 +43,13 @@ Contracts
         <h3 class="card-title">
             Fitting Audit
         </h3>
+        <button id="generate-report-button" onclick="createReport()" class="btn btn-warning float-right">Refresh Audit</button>
     </div>
     <div class="card-body">
-        <table id="fitting-audit-table" class="datatable table table-bordered table-hover text-center">
+        <table id="fitting-audit-table" class="datatable table table-bordered table-hover">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Fitting</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Status</th>
+                <th>Fitting</th>
+                <th>Status</th>
             </thead>
             <tbody>
                 <tr>

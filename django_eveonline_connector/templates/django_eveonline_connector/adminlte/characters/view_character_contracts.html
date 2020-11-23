@@ -1,11 +1,7 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 {% load static %}
-{% block header %}
+{% block title %}
 Contracts
-{% endblock %}
-
-{% block description %}
-{{character.name}}
 {% endblock %}
 
 {% block tab_content %}
@@ -16,9 +12,9 @@ Contracts
     <div class="card-body">
         <table id="contractSummary" class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Entity</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Contracts</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Most Common</th>
+                <th>Entity</th>
+                <th>Contracts</th>
+                <th>Most Common</th>
                 
             </thead>
             <tbody>
@@ -52,12 +48,12 @@ Contracts
     <div class="card-body">
         <table id="rawContractList" class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Date Created</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Contract Status</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Contract Type</th>
-                <th class="col-lg-3 col-md-3 col-xs-1">From</th>
-                <th class="col-lg-3 col-md-3 col-xs-1">To</th>
-                <th class="col-lg-1 col-md-1 col-xs-1">Actions</th>
+                <th>Date Created</th>
+                <th>Contract Status</th>
+                <th>Contract Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Actions</th>
             </thead>
             <tbody>
             </tbody>

@@ -1,11 +1,7 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 {% load static %}
-{% block header %}
+{% block title %}
 Journal
-{% endblock %}
-
-{% block description %}
-{{character.name}}
 {% endblock %}
 
 {% block tab_content %}
@@ -16,9 +12,9 @@ Journal
     <div class="card-body">
         <table id="journalSummary" class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Entity</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Entries</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Most Common</th>
+                <th>Entity</th>
+                <th>Entries</th>
+                <th>Most Common</th>
 
             </thead>
             <tbody>
@@ -47,11 +43,11 @@ Journal
     <div class="card-body">
         <table id="rawJournalTable" class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-2 col-md-2 col-xs-1">Date</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">Type</th>
-                <th class="col-lg-2 col-md-2 col-xs-1">First Party</th>
-                <th class="col-lg-3 col-md-3 col-xs-1">Second Party</th>
-                <th class="col-lg-3 col-md-3 col-xs-1">Amount</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>First Party</th>
+                <th>Second Party</th>
+                <th>Amount</th>
             </thead>
             <tbody>
             </tbody>

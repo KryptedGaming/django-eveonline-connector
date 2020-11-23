@@ -1,11 +1,7 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 
-{% block header %}
+{% block title %}
 Clones
-{% endblock %}
-
-{% block description %}
-{{character.name}}
 {% endblock %}
 
 {% block tab_content %}
@@ -16,8 +12,8 @@ Clones
     <div class="card-body">
         <table class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-4 col-md-4 col-xs-2">Location</th>
-                <th class="col-lg-4 col-md-4 col-xs-2">Implants</th>
+                <th>Location</th>
+                <th>Implants</th>
             </thead>
             <tbody>
             </tbody>
