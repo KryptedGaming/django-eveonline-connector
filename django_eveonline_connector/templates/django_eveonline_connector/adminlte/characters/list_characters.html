@@ -2,107 +2,56 @@
 {% load humanize %}
 
 {% block title %}
-EVE Online - Characters
+EVE Characters
 {% endblock %}
 
+{% block breadcrumb %}
+EVE Characters
+{% endblock %}
 
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    {% block header %}
-    EVE Online
-    {% endblock %}
+<!-- Main content -->
+{% block content %}
 
-    {% block description %}
-    View Characters
-    {% endblock %}
-
-    <!-- Main content -->
-    {% block content %}
-    
-    <div class="box box-primary">
-    <div class="box-body">
-    <table class="datatable table table-bordered table-hover">
-        <thead>
-            <tr>
-                <th>Verified</th>
-                <th>Character</th>
-                <th>Primary Character</th>
-                <th>Corporation</th>
-                <th>Alliance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for character in characters %}
-            <tr>
-                <td>
-                {% if character.token %}
-                <i class="fa fa-lg fa-check text-success"></i>
-                {% else %}
-                <i class="fa fa-lg fa-times text-danger"></i>
-                {% endif %}
-                </td>
-
-                <td>
-                    <div class="pull-left" style="padding-right: 8px;">
-                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
-                       {% if 'django_eveonline_connector' in INSTALLED_APPS %}
-                       <a href="{% url 'django-eveonline-connector-view-character' character.external_id %}">{{character.name}}</a>
-                       {% else %}
-                       {{character.name}}
-                       {% endif %}
-                    </div>
-                </td>
-
-                <td>
-                    <div class="pull-left" style="padding-right: 8px;">
-                    {% if character.token.user.primary_evecharacter %}
-                       <img width="16px" src="https://imageserver.eveonline.com/Character/{{character.token.user.primary_evecharacter.get_character.external_id}}_64.jpg" class="img-circle" alt="Avatar"> 
-                       {% if 'django_eveonline_connector' in INSTALLED_APPS %}
-                       <a href="{% url 'django-eveonline-connector-view-character' character.token.user.primary_evecharacter.get_character.external_id %}">{{character.token.user.primary_evecharacter.get_character.name}}</a>
-                       {% else %}
-                       {{character.name}}
-                       {% endif %}
-                    {% endif %}
-                    </div>
-                </td>
-
-                <td>
-                    <img width="16px" src="https://imageserver.eveonline.com/Corporation/{{character.corporation.external_id}}_64.png" class="img-circle" alt="Avatar">
-                    {{character.corporation}}
-                </td>
-
-                <td>
-                {% if character.corporation.alliance %}
-                <img width="16px" src="https://imageserver.eveonline.com/Alliance/{{character.corporation.alliance.external_id}}_64.png" class="img-circle" alt="Avatar">
-                {{character.corporation.alliance}}
-                {% else %}
-                None 
-                {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-            <!-- Bottom Divider -->
-            
-        </tbody>
-    </table>
-    </div>
-    </div>
-    {% endblock %}
-    <!-- /.content -->
+<div class="card card-primary">
+<div class="card-body">
+<table class="datatable table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Character</th>
+            <th>Primary Character</th>
+            <th>Corporation</th>
+            <th>Alliance</th>
+        </tr>
+    </thead>
+</table>
 </div>
+</div>
+{% endblock %}
+<!-- /.content -->
 
 {% block scripts %}
 <script>
-$(function () {
-    $('table').DataTable({
-      'paging'      : false,
-      'lengthChange': false,
-      'searching'   : true,
-      'ordering'    : true,
-      'info'        : true,
-      'autoWidth'   : false
+$('.datatable').DataTable({
+        'paging': true,
+        'lengthChange': true,
+        "columnDefs": [
+            {
+            "targets": 0,
+            "orderable": false
+            },
+            {
+                "targets": 2,
+                "orderable": false, 
+            }
+        ],
+        'searching': true,
+        'ordering': true,
+        'order': [[1, 'asc']],
+        'pageLength': 5,
+        "autoWidth": false,
+        'serverSide': true,
+        "ajax": "{% url 'django-eveonline-connector-api-characters' %}"
     })
- })
 </script>
 {% endblock %}

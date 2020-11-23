@@ -371,6 +371,12 @@ class EveCharacter(EveEntity):
         
         self.save() 
 
+    class Meta:
+        permissions = [
+            ('view_corporation_characters', 'Can view characters of same corporation'),
+            ('view_alliance_characters', 'Can view characters of same alliance'),
+            ('view_all_characters', 'Can view all characters')
+        ]
 
 class EveCorporation(EveEntity):
     ceo = models.OneToOneField(

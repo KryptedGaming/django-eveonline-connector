@@ -3,80 +3,42 @@
 {% load static %}
 
 {% block title %}
-EVE Online - View Character
+View Corporation
+{% endblock %}
+
+{% block breadcrumb %}
+View Corporation
 {% endblock %}
 
 
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    {% block header %}
-    Character
-    {% endblock %}
-
-    {% block description %}
-    {{character.name}}
-    {% endblock %}
-
-    <!-- Main content -->
-    {% block content %}
-    {% if form.errors %}
-    {% for field in form %}
-    {% for error in field.errors %}
-    <div class="wrap-input100 alert alert-danger m-b-10">
-        <span class="badge badge-secondary">{{field.label}}</span>
-        <strong>{{ error|escape }}</strong>
+{% block content %}
+{% if form.errors %}
+{% for field in form %}
+{% for error in field.errors %}
+<div class="wrap-input100 alert alert-danger m-b-10">
+    <span class="badge badge-secondary">{{field.label}}</span>
+    <strong>{{ error|escape }}</strong>
+</div>
+{% endfor %}
+{% endfor %}
+{% endif %}
+<div class="row">
+    <div class="col-md-3">
+        {% include 'django_eveonline_connector/adminlte/corporations/components/corporation_card.html' %}
     </div>
-    {% endfor %}
-    {% endfor %}
-    {% endif %}
-    <div class="row">
-        <div class="col-md-3">
-
-            <!-- Profile Image -->
-            <div class="box box-primary">
-                <div class="box-body box-profile">
-                    <img class="profile-user-img img-responsive img-circle"
-                        src="https://imageserver.eveonline.com/Corporation/{{corporation.external_id}}_128.jpg"
-                        alt="User profile picture">
-                    <h3 class="profile-username text-center">{{corporation.name }}</h3>
-                    <h5 class="text-muted text-center">{{corporation.alliance}} </h5>
-                    <br>
-
-                    <a class="btn btn-success btn-block"
-                        href="#">Refresh
-                        Corporation</a>
-                </div>
-                <!-- /.box-body -->
-            </div>
-            <!-- /.box -->
-
-        </div>
-
-        <!-- /.col -->
-        <div class="col-md-9">
-            <div class="nav-tabs-custom">
-                <ul class="nav nav-tabs">
-                    <li id="roster"><a
-                            href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">Roster</a>
-                    </li>
-                    <li id="structures"><a href="{% url 'django-eveonline-connector-view-corporation-structures' corporation.external_id %}">Structures</a>
-                    </li>
-                </ul>
+    <div class="col-md-9">
+        <div class="card">
+            {% include 'django_eveonline_connector/adminlte/corporations/components/corporation_navbar.html' %}
+            <div class="card-body">
                 <div class="tab-content">
                     <div class="tab-pane active">
                         {% block tab_content %}
                         {% endblock %}
                     </div>
                 </div>
-                <!-- /.tab-content -->
-                <!-- /.nav-tabs-custom -->
             </div>
         </div>
-        <!-- /.col -->
     </div>
-    <!-- /.row -->
-
-    {% endblock %}
-    <!-- /.content -->
 </div>
+
+{% endblock %}

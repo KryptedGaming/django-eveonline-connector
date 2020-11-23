@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 from django.apps import apps
+from django.urls import reverse
 import os 
 
 class DjangoEveOnlineConnectorConfig(AppConfig):
@@ -36,59 +37,8 @@ class DjangoEveOnlineConnectorConfig(AppConfig):
 
         # bind to krypted application
         if apps.is_installed('packagebinder'):
-            from packagebinder.exceptions import BindException
+            from .bindings import create_bindings
             try:
-                bind = apps.get_app_config('packagebinder').get_bind_object(
-                    self.package_name, self.version)
-                # Required Task Bindings
-                bind.add_required_task(
-                    name="EVE: Update Tokens",
-                    task="django_eveonline_connector.tasks.update_tokens",
-                    interval=1,
-                    interval_period="days",
-                )
-                bind.add_required_task(
-                    name="EVE: Update Characters",
-                    task="django_eveonline_connector.tasks.update_characters",
-                    interval=1,
-                    interval_period="days",
-                )
-                bind.add_required_task(
-                    name="EVE: Update Corporations",
-                    task="django_eveonline_connector.tasks.update_corporations",
-                    interval=1,
-                    interval_period="days",
-                )
-                bind.add_required_task(
-                    name="EVE: Update Affilitions",
-                    task="django_eveonline_connector.tasks.update_tokens",
-                    interval=5,
-                    interval_period="minutes",
-                )
-                
-                # Optional Task Bindings
-                bind.add_optional_task(
-                    name="EVE: Update Structures",
-                    task="django_eveonline_connector.tasks.update_structures",
-                    interval=1,
-                    interval_period="days",
-                )
-                bind.add_optional_task(
-                    name="EVE: Update Character Corporation Roles",
-                    task="django_eveonline_connector.tasks.update_character_roles",
-                    interval=1,
-                    interval_period="days",
-                )
-                bind.add_optional_task(
-                    name="EVE: Assign Eve Groups",
-                    task="django_eveonline_connector.tasks.assign_eve_groups",
-                    interval=30,
-                    interval_period="minutes",
-                )
-                bind.save()
-            except BindException as e:
-                print(e)
-                return 
+                create_bindings()
             except Exception as e:
-                print(e)
-                return
+                logger.exception(e)

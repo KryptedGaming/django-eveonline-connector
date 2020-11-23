@@ -1,0 +1,56 @@
+<div id="dt_wrapper_complete_applications" class="dataTables_wrapper dt-bootstrap4">
+    <table class="datatable table table-bordered table-hover text-center">
+        <thead>
+            <th>Skill</th>
+            <th>Level</th>
+        </thead>
+        <tbody>
+            {% for skill in skills %}
+            {% if skill.skill_group == group %}
+            <tr>
+                <td>{{skill.skill_name}}</td>
+                <td>
+                    {% if skill.trained_skill_level == 0 %}
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    {% elif skill.trained_skill_level == 1 %}
+                    <div class="rating ratingOn"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    {% elif skill.trained_skill_level == 2 %}
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    {% elif skill.trained_skill_level == 3 %}
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating"></div>
+                    <div class="rating"></div>
+                    {% elif skill.trained_skill_level == 4 %}
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating"></div>
+                    {% elif skill.trained_skill_level == 5 %}
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    <div class="rating ratingOn"></div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

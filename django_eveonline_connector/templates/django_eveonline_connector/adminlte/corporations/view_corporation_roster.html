@@ -1,24 +1,19 @@
 {% extends "django_eveonline_connector/adminlte/corporations/view_corporation.html" %}
 
-{% block header %}
-Roster
-{% endblock %}
-
-{% block description %}
-{{corporation.name}}
+{% block title %}
+Corporation Roster
 {% endblock %}
 
 {% block tab_content %}
-<div class="box box-success box-solid">
-    <div class="box-header">
-        <h3 class="box-title">Character Roster</h3>
+<div class="card card-success card-outline">
+    <div class="card-header">
+        <h3 class="card-title">Character Roster</h3>
     </div>
-    <div class="box-body">
-        <div class="dataTables_wrapper form-inline dt-bootstrap">
+    <div class="card-body">
             <table class="table table-bordered table-striped dataTable">
                 <thead>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Character</th>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Alternate Characters</th>
+                    <th>Character</th>
+                    <th>Alternate Characters</th>
                 </thead>
                 <tbody>
                     {% for character in characters %}
@@ -39,20 +34,18 @@ Roster
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
     </div>
 </div>
 
-<div class="box box-danger box-solid">
-    <div class="box-header">
-        <h3 class="box-title">Token Issues</h3>
+<div class="card card-danger card-outline">
+    <div class="card-header">
+        <h3 class="card-title">Token Issues</h3>
     </div>
-    <div class="box-body">
-        <div class="dataTables_wrapper form-inline dt-bootstrap">
+    <div class="card-body">
             <table class="table table-bordered table-striped dataTable">
                 <thead>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Character</th>
-                    <th class="col-lg-4 col-md-4 col-xs-2">Status</th>
+                    <th>Character</th>
+                    <th>Status</th>
                 </thead>
                 <tbody>
                     {% for character in unauthorized_characters %}
@@ -73,7 +66,6 @@ Roster
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
     </div>
 </div>
 

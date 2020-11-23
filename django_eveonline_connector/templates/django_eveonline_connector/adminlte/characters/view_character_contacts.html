@@ -1,24 +1,21 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 {% load static %}
-{% block header %}
+
+{% block title %}
 Contacts
 {% endblock %}
 
-{% block description %}
-{{character.name}}
-{% endblock %}
-
 {% block tab_content %}
-<div class="box box-info box-solid">
-    <div class="box-header">
+<div class="card card-info card-outline">
+    <div class="card-header">
         <h3>Contact List</h3>
     </div>
-    <div class="box-body">
+    <div class="card-body">
         <table class="datatable table table-bordered table-hover text-center">
             <thead>
-                <th class="col-lg-4 col-md-4 col-xs-2">Name</th>
-                <th class="col-lg-4 col-md-4 col-xs-2">Type</th>
-                <th class="col-lg-4 col-md-4 col-xs-2">Standing</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Standing</th>
             </thead>
             <tbody>
             </tbody>

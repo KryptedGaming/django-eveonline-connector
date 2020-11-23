@@ -1,24 +1,25 @@
 {% extends "django_eveonline_connector/adminlte/characters/view_character.html" %}
 
-{% block header %}
+{% block title %}
 Transactions
 {% endblock %}
 
-{% block description %}
-{{character.name}}
-{% endblock %}
-
 {% block tab_content %}
-<table class="datatable table table-bordered table-hover">
-    <thead>
-        <th class="col-lg-2 col-md-2 col-xs-1">Client</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">Item</th>
-        <th class="col-lg-2 col-md-2 col-xs-1">Quantity</th>
-        <th class="col-lg-3 col-md-3 col-xs-1">Unit Price</th>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
+<div class="card">
+    <div class="card-body">
+        <table class="datatable table table-bordered table-hover">
+            <thead>
+                <th>Client</th>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

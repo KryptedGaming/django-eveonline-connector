@@ -1,0 +1,61 @@
+
+{% load static %}
+{% load humanize %}
+<!-- Profile Image -->
+ <div class="card card-primary">
+    <div class="card-body box-profile">
+        <div class="text-center">
+            <img class="profile-user-img img-fluid img-circle"
+            src="https://imageserver.eveonline.com/Character/{{character.external_id}}_128.jpg">
+        </div>
+        
+        <h3 class="profile-username text-center">{{character.name }}</h3>
+        <h5 class="text-muted text-center">{{character.corporation}} </h5>
+        <h6 class="text-muted text-center">{{character.corporation.alliance}} </h6>
+        <br>
+
+        <ul class="list-group list-group-unbordered">
+            <li class="list-group-item">
+                <b>Links</b>
+                <div class="float-right">
+                    <a href="https://forums.eveonline.com/u/{{character.name}}/summary" target="_blank">
+                        <img width="16x"
+                            src="{% static 'django_eveonline_connector/img/eve_forum_logo.ico'%}">
+                    </a>
+                    <a href="http://evewho.com/pilot/{{character.name}}" target="_blank">
+                        <img width="16x"
+                            src="{% static 'django_eveonline_connector/img/evewho_logo.ico'%}">
+                    </a>
+                    <a href="https://zkillboard.com/character/{{character.name}}" target="_blank">
+                        <img width="16x"
+                            src="{% static 'django_eveonline_connector/img/zkillboard_logo.ico'%}">
+                    </a>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <b>Skill Points</b>
+                <p class="float-right">
+                    {{character.info.skill_points|intcomma}}
+                </p>
+            </li>
+            {% if "django_discord_connector" in INSTALLED_APPS %}
+            <li class="list-group-item">
+                <b>Discord</b>
+                {% if character.token.user.discord_token %}
+                <p class="float-right">
+                    {{character.token.user.discord_token.discord_user}}
+                </p>
+                {% else %}
+                <p class="float-right"><i>None</i></p>
+                {% endif %}
+            </li>
+            {% endif %}
+        </ul>
+
+        <a class="btn btn-success btn-block"
+            href="{% url 'django-eveonline-connector-refresh-character' character.external_id %}?fields=assets,jumpclones,contacts,contracts,skills,journal,transactions">Refresh
+            Character</a>
+    </div>
+    <!-- /.card-body -->
+</div>
+<!-- /.card -->

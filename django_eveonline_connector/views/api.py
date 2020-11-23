@@ -1,9 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse
 from django.db.models import Q
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
 from django.views.generic import TemplateView
-from django_eveonline_connector.models import EveCharacter, EveEntity
+from django_eveonline_connector.models import EveCharacter, EveEntity, EveToken
 from django_eveonline_connector.models import EveAsset, EveJumpClone, EveContact, EveContract, EveSkill, EveJournalEntry, EveTransaction
 from django_eveonline_connector.models import EveClient
 from django_eveonline_connector.utilities.esi.universe import resolve_id
@@ -57,6 +58,10 @@ def get_entity_info(request):
 
 
 # Character Lookups
+@login_required
+def get_characters(request):
+    return CharacterJson.as_view()(request)
+
 @login_required
 @permission_required('django_eveonline_connector.view_eveasset', raise_exception=True)
 def get_assets(request):
@@ -118,6 +123,96 @@ def get_transactions(request):
 
 
 # JSON Class Views
+class CharacterJson(BaseDatatableView):
+    model = EveCharacter 
+    columns = ['status', 'character', 'primary_character', 'corporation', 'alliance']
+    order_columns = [ 'character', 'corporation', 'alliance']
+
+    def filter_queryset(self, qs):
+        search = self.request.GET.get('search[value]', None)
+        if search:
+            search_filter = Q(name__istartswith=search) | Q(corporation__name__istartswith=search) | Q(corporation__alliance__name__istartswith=search)
+        else:
+            search_filter = Q() 
+
+        if self.request.user.has_perm('django_eveonline_connector.view_all_characters'): 
+            return qs.filter(search_filter)
+        elif self.request.user.has_perm('django_eveonline_connector.view_alliance_characters'):
+            corporation_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation', flat=True)
+            return qs.filter(corporation__pk__in=corporation_set)
+        elif self.request.user.has_perm('django_eveonline_connector.view_corporation_characters'):
+            alliance_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation__alliance', flat=True)
+            return qs.filter(corporation__pk__in=alliance_set)
+        else:
+            return qs.filter(Q(token__user=self.request.user) | search_filter)
+
+    
+
+    def prepare_results(self, qs):
+        json_data = []
+        for character in qs:
+            try:
+                if character.token and character.token.valid:
+                    status = """
+                    <div class="text-center">
+                    <i class="fa fa-check text-success"></i>
+                    </div>
+                    """
+                else:
+                    status = """
+                    <div class="text-center">
+                    <i class="fa fa-times text-danger"></i>
+                    </div>
+                    """
+            except EveToken.DoesNotExist as e:
+                status = """
+                <div class="text-center">
+                <i class="fa fa-lg fa-times text-danger"></i>
+                </div>
+                """
+
+            character_row = """
+            <img width="16px" src="https://imageserver.eveonline.com/Character/%s_64.jpg" class="img-circle">
+            <a href="%s">%s</a>
+            """ % (character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.external_id}), character)
+            try:
+                if character.token:
+                    primary_character = character.token.user.primary_evecharacter.character
+                    primary_character_row = """
+                    <img width="16px" src="https://imageserver.eveonline.com/Character/%s_64.jpg" class="img-circle">
+                    <a href="%s">%s</a>
+                    """ % (primary_character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.token.user.primary_evecharacter.character.external_id}), character.token.user.primary_evecharacter.character.name)
+                else:
+                    primary_character_row=""
+            except User.primary_evecharacter.RelatedObjectDoesNotExist as e: 
+                primary_character_row="" 
+
+            if character.corporation:
+                corporation_row = """
+                <img width="16px" src="https://imageserver.eveonline.com/Corporation/%s_64.png" class="img-circle">
+                <a href="#">%s</a>
+                """ % (character.corporation.external_id, character.corporation.name)
+            else:
+                corporation_row = ""
+
+            if character.corporation and character.corporation.alliance:
+                alliance_row = """
+                <img width="16px" src="https://imageserver.eveonline.com/Alliance/%s_64.png" class="img-circle">
+                <a href="#">%s</a>
+                """ % (character.corporation.alliance.external_id, character.corporation.alliance.name)
+            else:
+                alliance_row = ""
+
+            json_data.append([
+                status,
+                character_row, 
+                primary_character_row,
+                corporation_row,
+                alliance_row
+            ])
+
+        return json_data
+
 class AssetJson(BaseDatatableView):
     model = EveAsset
     columns = ['item_name', 'location_name', 'quantity']

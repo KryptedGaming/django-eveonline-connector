@@ -77,6 +77,8 @@ urlpatterns += [
 
 # JSON
 urlpatterns += [
+    path('api/characters/', api.get_characters,
+         name="django-eveonline-connector-api-characters"),
     path('api/assets/', api.get_assets,
          name="django-eveonline-connector-api-assets"),
     path('api/clones/', api.get_clones,

@@ -2,68 +2,58 @@
 {% load humanize %}
 
 {% block title %}
-EVE Online - Corporations
+Corporations
+{% endblock %}
+
+{% block breadcrumb %}
+Corporations
 {% endblock %}
 
 
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    {% block header %}
-    EVE Online
-    {% endblock %}
+{% block content %}
 
-    {% block description %}
-    View Corporations
-    {% endblock %}
+<div class="card card-primary">
+<div class="card-body">
+<table class="datatable table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>Corporation</th>
+            <th>Alliance</th>
+            <th>CEO</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for corporation in corporations %}
+        <tr>
+            <td>
+                <img width="32px" src="https://imageserver.eveonline.com/Corporation/{{corporation.external_id}}_64.jpg" class="img-circle"
+                    alt="Avatar">
+                <a href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">{{corporation.name}}</a>
+            </td>
 
-    <!-- Main content -->
-    {% block content %}
-    
-    <div class="box box-primary">
-    <div class="box-body">
-    <table class="datatable table table-bordered table-hover">
-        <thead>
-            <tr>
-                <th>Corporation</th>
-                <th>Alliance</th>
-                <th>CEO</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for corporation in corporations %}
-            <tr>
-                <td>
-                    <img width="32px" src="https://imageserver.eveonline.com/Corporation/{{corporation.external_id}}_64.jpg" class="img-circle"
-                        alt="Avatar">
-                    <a href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">{{corporation.name}}</a>
-                </td>
+            <td>
+                <img width="32px" src="https://imageserver.eveonline.com/Alliance/{{corporation.alliance.external_id}}_64.jpg"
+                    class="img-circle" alt="Avatar">
+                {{corporation.alliance}}
+            </td>
 
-                <td>
-                    <img width="32px" src="https://imageserver.eveonline.com/Alliance/{{corporation.alliance.external_id}}_64.jpg"
-                        class="img-circle" alt="Avatar">
-                    {{corporation.alliance}}
-                </td>
+            <td>
+                {% if corporation.ceo %}
+                <img width="32px" src="https://imageserver.eveonline.com/Character/{{corporation.ceo.external_id}}_64.jpg"
+                    class="img-circle" alt="Avatar">
+                {{corporation.ceo}}
+                {% endif %}
+            </td>
 
-                <td>
-                    {% if corporation.ceo %}
-                    <img width="32px" src="https://imageserver.eveonline.com/Character/{{corporation.ceo.external_id}}_64.jpg"
-                        class="img-circle" alt="Avatar">
-                    {{corporation.ceo}}
-                    {% endif %}
-                </td>
-
-            </tr>
-            {% endfor %}
-            <!-- Bottom Divider -->
-            
-        </tbody>
-    </table>
-    </div>
-    </div>
-    {% endblock %}
-    <!-- /.content -->
+        </tr>
+        {% endfor %}
+        <!-- Bottom Divider -->
+        
+    </tbody>
+</table>
 </div>
+</div>
+{% endblock %}
 
 {% block scripts %}
 <script>
