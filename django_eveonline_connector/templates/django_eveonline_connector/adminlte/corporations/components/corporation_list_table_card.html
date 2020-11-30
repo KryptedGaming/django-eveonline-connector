@@ -1,0 +1,44 @@
+<div class="card card-primary card-outline">
+    <div class="card-header">
+        <h3>Tracked Corporations</h3>
+    </div>
+    <div class="card-body">
+        <table class="datatable table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Corporation</th>
+                    <th>Alliance</th>
+                    <th>CEO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for corporation in corporations %}
+                <tr>
+                    <td>
+                        <img width="32px" src="https://imageserver.eveonline.com/Corporation/{{corporation.external_id}}_64.jpg" class="img-circle"
+                            alt="Avatar">
+                        <a href="{% url 'django-eveonline-connector-view-corporation' corporation.external_id %}">{{corporation.name}}</a>
+                    </td>
+
+                    <td>
+                        <img width="32px" src="https://imageserver.eveonline.com/Alliance/{{corporation.alliance.external_id}}_64.jpg"
+                            class="img-circle" alt="Avatar">
+                        {{corporation.alliance}}
+                    </td>
+
+                    <td>
+                        {% if corporation.ceo %}
+                        <img width="32px" src="https://imageserver.eveonline.com/Character/{{corporation.ceo.external_id}}_64.jpg"
+                            class="img-circle" alt="Avatar">
+                        {{corporation.ceo}}
+                        {% endif %}
+                    </td>
+
+                </tr>
+                {% endfor %}
+                <!-- Bottom Divider -->
+                
+            </tbody>
+        </table>
+    </div>
+</div>

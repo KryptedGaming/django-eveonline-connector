@@ -1,0 +1,21 @@
+<div class="card card-danger card-outline">
+    <div class="card-header">
+        <h3>Enable Corporation Tracking</h3>
+    </div>
+    {% if request.user.is_staff %}
+    <div class="card-body">
+        <p><b>No corporations are currently tracked.</b></p>
+        <ol>
+            <li>Navigate to the <a href="/admin">Admin Panel</a></li>
+            <li>Find the menu for <a href="/admin/django_eveonline_connector/evecorporation/">EveCorporation objects</a></li>
+            <li>Select the corporation you would like to track.</li>
+            <li>Check "Track corporation" and Save </li>
+        </ol>
+        <p>Pay attention to any errors (red) that appear, and follow the instructions given.</p>
+    </div>
+    {% else %}
+    <div class="card-body">
+        Contact your administrator, link them to this page.
+    </div>
+    {% endif %}
+</div>
