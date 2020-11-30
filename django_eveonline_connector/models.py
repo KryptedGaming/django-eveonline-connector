@@ -327,7 +327,7 @@ class EveCharacter(EveEntity):
         "EveCorporation", on_delete=models.SET_NULL, null=True)
     roles = models.ManyToManyField("EveCorporationRole", blank=True)
     token = models.OneToOneField(
-        "EveToken", on_delete=models.SET_NULL, null=True)
+        "EveToken", on_delete=models.CASCADE, null=True, blank=True)
 
     @staticmethod
     def get_primary_character(user):
