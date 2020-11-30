@@ -156,13 +156,16 @@ def update_corporations():
             eve_corporation.delete()
             continue
         if eve_corporation.track_corporation:
-            pull_corporation_roster.apply_async(args=[eve_corporation.external_id])
-            update_corporation_alliance.apply_async(
-                args=[eve_corporation.external_id])
-            update_corporation_ceo.apply_async(
-                args=[eve_corporation.external_id])
+            update_corporation.apply_async(args=[eve_corporation.external_id])
         else:
             logger.info(f"Skipping corporation update for {eve_corporation.name}: Not Tracked")
+
+@shared_task
+def update_corporation(corporation_id):
+    pull_corporation_roster.apply_async(args=[corporation_id])
+    update_corporation_alliance.apply_async(args=[corporation_id])
+    update_corporation_ceo.apply_async( args=[corporation_id])
+
 
 @shared_task
 def update_alliances():
