@@ -908,7 +908,7 @@ class EveTransaction(EveEntityData):
     # Our Conversions
     client_name = models.CharField(max_length=64)
     client_type = models.CharField(max_length=64, choices=id_types)
-    location_name = models.CharField(max_length=64)
+    location_name = models.CharField(max_length=128)
     item_name = models.CharField(max_length=64)
 
     @property
