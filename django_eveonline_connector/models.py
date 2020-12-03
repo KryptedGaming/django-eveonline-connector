@@ -34,7 +34,11 @@ class EveClient(DjangoSingleton):
     esi_secret_key = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
-        
+        keys = cache.keys('esi_sso_url*')
+
+        for key in keys:
+            cache.delete(key)
+
         super(EveClient, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -327,7 +331,7 @@ class EveCharacter(EveEntity):
         "EveCorporation", on_delete=models.SET_NULL, null=True)
     roles = models.ManyToManyField("EveCorporationRole", blank=True)
     token = models.OneToOneField(
-        "EveToken", on_delete=models.SET_NULL, null=True)
+        "EveToken", on_delete=models.CASCADE, null=True, blank=True)
 
     @staticmethod
     def get_primary_character(user):
@@ -400,6 +404,35 @@ class EveCorporation(EveEntity):
         eve_corporation.save()
 
         return eve_corporation
+
+    def validate_ceo(self):
+        valid = True 
+        required_scopes = ['esi-contracts.read_corporation_contracts.v1', 'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
+        scopes = EveScope.objects.filter(name__in=required_scopes)
+        for scope in scopes:
+                if scope not in self.ceo.token.scopes.all():
+                    self.ceo.token.requested_scopes.add(scope)
+                    valid = False 
+        
+        return valid 
+
+
+    def save(self, *args, **kwargs):
+        required_scopes = ['esi-contracts.read_corporation_contracts.v1', 'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
+        scopes = EveScope.objects.filter(name__in=required_scopes)
+        if self.track_corporation and self.ceo:
+            if not self.validate_ceo():
+                self.track_corporation = False 
+                super(EveCorporation, self).save(*args, **kwargs)
+                raise EveMissingScopeException(f"CEO missing the requested scopes to enable corporation tracking. Please update token for {self.ceo}.")
+        elif self.track_corporation and not self.ceo:
+            from django_eveonline_connector.tasks import update_corporation_ceo
+            update_corporation_ceo.apply_async(args=[self.external_id])
+            self.track_corporation = False 
+            super(EveCorporation, self).save(*args, **kwargs)
+            raise EveMissingScopeException(f"Unable to track a corporation without a CEO. Queued corporation update job for {self.external_id}.")
+
+        super(EveCorporation, self).save(*args, **kwargs)
 
 class EveAlliance(EveEntity):
     executor = models.OneToOneField(
@@ -908,7 +941,7 @@ class EveTransaction(EveEntityData):
     # Our Conversions
     client_name = models.CharField(max_length=64)
     client_type = models.CharField(max_length=64, choices=id_types)
-    location_name = models.CharField(max_length=64)
+    location_name = models.CharField(max_length=128)
     item_name = models.CharField(max_length=64)
 
     @property

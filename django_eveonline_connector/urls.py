@@ -55,6 +55,8 @@ urlpatterns += [
 urlpatterns += [
     path('corporations/', corporation.view_corporations,
          name="django-eveonline-connector-corporations-view"),
+         path('corporation/refresh/<int:external_id>/', corporation.refresh_corporation,
+         name="django-eveonline-connector-refresh-corporation"),
     path('corporation/view/<int:external_id>/', corporation.view_corporation,
          name="django-eveonline-connector-view-corporation"),
     path('corporation/view/<int:external_id>/structures/', corporation.view_corporation_structures,

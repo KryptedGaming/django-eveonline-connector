@@ -131,20 +131,20 @@ class CharacterJson(BaseDatatableView):
     def filter_queryset(self, qs):
         search = self.request.GET.get('search[value]', None)
         if search:
-            search_filter = Q(name__istartswith=search) | Q(corporation__name__istartswith=search) | Q(corporation__alliance__name__istartswith=search)
+            search_filter = Q(name__istartswith=search) |  Q(token__user__primary_evecharacter__character__name__istartswith=search) | Q(corporation__name__istartswith=search) | Q(corporation__alliance__name__istartswith=search)
         else:
             search_filter = Q() 
 
         if self.request.user.has_perm('django_eveonline_connector.view_all_characters'): 
             return qs.filter(search_filter)
-        elif self.request.user.has_perm('django_eveonline_connector.view_alliance_characters'):
-            corporation_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation', flat=True)
-            return qs.filter(corporation__pk__in=corporation_set)
         elif self.request.user.has_perm('django_eveonline_connector.view_corporation_characters'):
-            alliance_set = EveCharacter.objects.filter(Q(token__user=self.request.user) | search_filter).values_list('corporation__alliance', flat=True)
-            return qs.filter(corporation__pk__in=alliance_set)
+            corporation_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation', flat=True)
+            return qs.filter(Q(corporation__pk__in=corporation_set) & search_filter)
+        elif self.request.user.has_perm('django_eveonline_connector.view_alliance_characters'):
+            alliance_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation__alliance', flat=True)
+            return qs.filter(Q(corporation__alliance__pk__in=alliance_set) & search_filter)
         else:
-            return qs.filter(Q(token__user=self.request.user) | search_filter)
+            return qs.filter(Q(token__user=self.request.user) & search_filter)
 
     
 

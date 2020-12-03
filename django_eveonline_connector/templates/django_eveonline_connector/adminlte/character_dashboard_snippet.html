@@ -17,8 +17,8 @@
                         src="https://imageserver.eveonline.com/Character/{{token.evecharacter.external_id}}_64.jpg" />
                 </div>
                 <div>
-                    {% if 'django_eveonline_connector' not in INSTALLED_APPS %}
-                    <b class="hidden-xs">{{token.evecharacter.name}}</b>
+                    {% if not token.evecharacter %}
+                    <b class="hidden-xs">Character does not exist. Contact administrator.</b>
                     {% else %}
                     <b class="hidden-xs"><a href="{% url 'django-eveonline-connector-view-character' token.evecharacter.external_id %}">{{token.evecharacter.name}}</a></b>
                     {% endif %}

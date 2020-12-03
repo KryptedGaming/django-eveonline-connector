@@ -5,6 +5,7 @@ from django import forms
 from django_eveonline_connector.models import *
 from django.urls import reverse
 from django.utils.safestring import mark_safe
+from django_eveonline_connector.exceptions import EveMissingScopeException
 
 
 app_config = apps.get_app_config('django_eveonline_connector')
@@ -41,6 +42,12 @@ class EveScopeAdmin(admin.ModelAdmin):
 class EveCorporationAdmin(admin.ModelAdmin):
     list_display = ('name', 'ceo', 'track_corporation', 'track_characters')
     search_fields = ('name', 'ceo__name')
+
+    def save_model(self, request, obj, form, change):
+        try:
+            super(EveCorporationAdmin, self).save_model(request, obj, form, change)
+        except EveMissingScopeException as e:
+            messages.error(request, e)
 
 @admin.register(EveCharacter)
 class EveCharacterAdmin(admin.ModelAdmin):

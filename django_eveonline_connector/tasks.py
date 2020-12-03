@@ -2,6 +2,7 @@ from celery import task, shared_task
 from .models import *
 from django.utils import timezone
 from django.db.models import Q
+from django_eveonline_connector.exceptions import EveMissingScopeException
 
 import logging
 import pytz
@@ -156,13 +157,25 @@ def update_corporations():
             eve_corporation.delete()
             continue
         if eve_corporation.track_corporation:
-            pull_corporation_roster.apply_async(args=[eve_corporation.external_id])
-            update_corporation_alliance.apply_async(
-                args=[eve_corporation.external_id])
-            update_corporation_ceo.apply_async(
-                args=[eve_corporation.external_id])
+            update_corporation.apply_async(args=[eve_corporation.external_id])
         else:
             logger.info(f"Skipping corporation update for {eve_corporation.name}: Not Tracked")
+
+@shared_task
+def update_corporation(corporation_id):
+    corporation = EveCorporation.objects.get(external_id=corporation_id)
+
+    try:
+        corporation.save()
+    except EveMissingScopeException:
+        logger.warning(f"Corporation tracking for {corporation.name} has been disabled. Improper CEO token.")
+    
+    update_corporation_alliance.apply_async(args=[corporation_id])
+    update_corporation_ceo.apply_async( args=[corporation_id])
+
+    if corporation.track_corporation:
+        pull_corporation_roster.apply_async(args=[corporation_id])
+
 
 @shared_task
 def update_alliances():
@@ -369,7 +382,11 @@ def update_corporation_ceo(corporation_id):
 
 @shared_task
 def pull_corporation_roster(corporation_id):
-    token = EveToken.objects.filter(evecharacter__corporation__external_id=corporation_id).first()
+    corporation = EveCorporation.objects.get(external_id=corporation_id)
+    if not corporation.validate_ceo():
+        logger.warning(f"Failed to update corporation roster for {corporation.name}. Improper CEO token.")
+        return
+    token = corporation.ceo.token 
     roster = EveClient.call('get_corporations_corporation_id_members', token=token, corporation_id=corporation_id)
     members_to_update = EveCharacter.objects.filter(~Q(external_id__in=roster.data))
     ids_that_exist = EveCharacter.objects.filter(external_id__in=roster.data).values_list('external_id', flat=True)

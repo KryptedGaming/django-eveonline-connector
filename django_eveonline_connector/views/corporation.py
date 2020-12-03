@@ -4,9 +4,17 @@ from django.contrib import messages
 from django.db.models import Q 
 from itertools import chain
 from django.contrib.auth.decorators import login_required, permission_required
+from django_eveonline_connector.tasks import update_corporation
 
 import logging
 logger = logging.getLogger(__name__)
+
+@login_required
+@permission_required('django_eveonline_connector.manage_evecorporation', raise_exception=True)
+def refresh_corporation(request, external_id):
+    result = update_corporation.apply_async(args=[external_id])
+    messages.warning(request, f"Queued corporation update for {external_id}")
+    return redirect('django-eveonline-connector-view-corporation', external_id)
 
 @login_required
 @permission_required('django_eveonline_connector.view_evecorporation', raise_exception=True)
