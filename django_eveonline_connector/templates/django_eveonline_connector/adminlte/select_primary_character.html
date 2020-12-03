@@ -2,7 +2,11 @@
 {% load humanize %}
 
 {% block title %}
-EVE Online - Select Token Type
+Primary Character Selector
+{% endblock %}
+
+{% block breadcrumb %}
+Primary Character Selector
 {% endblock %}
 
 
@@ -20,26 +24,31 @@ EVE Online - Select Token Type
     <!-- Main content -->
     {% block content %}
 
-    <div class="box box-primary box-solid">
-        <div class="box-header">
-            <h1 class="box-title">Available Characters</h1>
+    <div class="card card-primary">
+        <div class="card-header">
+            <h1 class="card-title">Available Characters</h1>
         </div>
-        <div class="box-body">
+        <div class="card-body">
             <table class="datatable table table-bordered table-hover">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>Character</th>
-                        <th>Corporation</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for character in characters %}
                     <tr>
-                        <td>{{character.name}}</td>
-                        <td>{{character.corporation}}</td>
+                        <td class="text-center">
+                            <img width="32px" src="https://imageserver.eveonline.com/Character/{{character.external_id}}_64.jpg" class="img-circle">
+                        </td>
+                        <td>
+                    
+                            {{character.name}}
+                        </td>
                         <td><a href="{% url 'django-eveonline-connector-character-set-primary' character.external_id %}"
-                                class="btn btn-success btn-block">Select Character</a></td>
+                                class="btn btn-success btn-block"><i class="fas far fa-arrow-right"></i></a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
