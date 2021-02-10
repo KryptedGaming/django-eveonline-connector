@@ -766,7 +766,7 @@ class EveContract(EveEntityData):
     acceptor_name = models.CharField(max_length=64)
     assignee_name = models.CharField(max_length=64)
     issuer_name = models.CharField(max_length=64)
-    issuer_corporation_name = models.CharField(max_length=64)
+    issuer_corporation_name = models.CharField(max_length=256)
     acceptor_type = models.CharField(max_length=32, choices=id_types)
     assignee_type = models.CharField(max_length=32, choices=id_types)
     issuer_type = models.CharField(max_length=64, choices=id_types)
