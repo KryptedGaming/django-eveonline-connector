@@ -140,6 +140,8 @@ def update_character_roles():
         if eve_character.token and eve_character.token.valid:
             update_character_corporation_roles.apply_async(
                 args=[eve_character.external_id])
+        else:
+            eve_character.roles.clear()
 
 
 @shared_task
@@ -305,17 +307,23 @@ def update_character_transactions(character_id, *args, **kwargs):
 @shared_task
 def update_character_corporation_roles(character_id):
     character = EveCharacter.objects.get(external_id=character_id)
-    eve_client = EveClient.get_instance()
-    response = eve_client.call(
-        op='get_characters_character_id_roles', character_id=character_id)
-    if response.status != 200:
+    try:
+        character.update_character_corporation()
+        eve_client = EveClient.get_instance()
+        response = eve_client.call(
+            op='get_characters_character_id_roles', character_id=character_id)
+        if response.status != 200:
+            logger.error(
+                f"Failed to pull corporation roles for character {character_id}. Response: {response.data}")
+            return
+        roles = EveCorporationRole.objects.filter(
+            codename__in=response.data['roles'])
+        if roles != character.roles.all():
+            character.roles.set(roles)
+    except Exception as e:
         logger.error(
-            f"Failed to pull corporation roles for character {character_id}")
-        return
-    roles = EveCorporationRole.objects.filter(
-        codename__in=response.data['roles'])
-    if roles != character.roles.all():
-        character.roles.set(roles)
+            f"Error updating corporation roles for {character_id}. Clearing roles for safety. Error: {e}")
+        character.roles.clear()
 
 
 """
