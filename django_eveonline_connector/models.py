@@ -1,5 +1,5 @@
-from django_eveonline_connector.utilities.static.universe import *
-from django_eveonline_connector.utilities.esi.universe import *
+
+
 from esipy import EsiClient, EsiSecurity, EsiApp
 from django.core.cache import cache
 from django.db import models
@@ -151,7 +151,7 @@ class EveClient(DjangoSingleton):
             request = EveClient.get_esi_client().request(
                 operation(**kwargs), raise_on_error=raise_exception)
 
-        if request.status not in [200, 204]:
+        if request.status not in [200, 204, 503, 504]:
             logger.warning(
                 f"Failed ({request.status}) ESI call '{op}' with {kwargs}. Response: {request.data}")
 
@@ -326,6 +326,10 @@ class EveToken(models.Model):
 
         return data
 
+# fmt: off 
+from django_eveonline_connector.utilities.static.universe import *
+from django_eveonline_connector.utilities.esi.universe import *
+# fmt: on
 
 """
 Entity Models
@@ -380,9 +384,13 @@ class EveCharacter(EveEntity):
 
     def update_character_corporation(self, corporation_id=None):
         if not corporation_id:
-            response = EveClient.call(
-                'post_characters_affiliation', characters=[self.external_id])
-            corporation_id = response.data[0]['corporation_id']
+            try:
+                response = EveClient.call(
+                    'post_characters_affiliation', characters=[self.external_id])
+                corporation_id = response.data[0]['corporation_id']
+            except Exception as e:
+                logger.error(
+                    f"Error pulling corporation for character. Error: {e}. Response: {response.data}")
 
         if EveCorporation.objects.filter(external_id=corporation_id).exists():
             self.corporation = EveCorporation.objects.get(
