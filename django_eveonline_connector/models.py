@@ -142,14 +142,16 @@ class EveClient(DjangoSingleton):
             token = None
 
         if token:
-            if not token.refresh():
+            if token.refresh():
+                logger.info(
+                    f"Calling token guarded ESI: {op} with arguments {kwargs}")
+
+                request = EveClient.get_esi_client(token=token).request(
+                    operation(**kwargs), raise_on_error=raise_exception)
+            else:
                 logger.info(
                     f"Skipping ESI call for expired token: {op} with arguments {kwargs}")
 
-            logger.info(
-                f"Calling token guarded ESI: {op} with arguments {kwargs}")
-            request = EveClient.get_esi_client(token=token).request(
-                operation(**kwargs), raise_on_error=raise_exception)
         else:
             logger.info(f"Calling ESI: {op} with arguments {kwargs}")
             request = EveClient.get_esi_client().request(
