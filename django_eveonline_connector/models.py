@@ -1,8 +1,10 @@
+from django_eveonline_connector.utilities.static.universe import *
+from django_eveonline_connector.utilities.esi.universe import *
 from esipy import EsiClient, EsiSecurity, EsiApp
 from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User, Group 
+from django.contrib.auth.models import User, Group
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
 from django_singleton_admin.models import DjangoSingleton
@@ -26,6 +28,8 @@ id_types = (
 ESI Models
 These models are used as wrappers around EsiPy
 """
+
+
 class EveClient(DjangoSingleton):
     esi_base_url = models.URLField(
         default="https://esi.evetech.net/latest/swagger.json?datasource=tranquility")
@@ -34,10 +38,13 @@ class EveClient(DjangoSingleton):
     esi_secret_key = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
-        keys = cache.keys('esi_sso_url*')
+        try:
+            keys = cache.keys('esi_sso_url*')
 
-        for key in keys:
-            cache.delete(key)
+            for key in keys:
+                cache.delete(key)
+        except Exception as e:
+            logger.error("Error clearing cache for ESI SSO URL keys: %s" + e)
 
         super(EveClient, self).save(*args, **kwargs)
 
@@ -61,7 +68,7 @@ class EveClient(DjangoSingleton):
         e.g ['esi.scope.v1', 'esi.scope.v2']
         """
         scope_list = EveScope.convert_to_list(EveScope.objects.filter(
-            Q(required=True) | 
+            Q(required=True) |
             Q(name__in=extra_scopes)
         ))
         scope_string = ",".join(scope_list)
@@ -74,8 +81,8 @@ class EveClient(DjangoSingleton):
                 redirect_uri=self.esi_callback_url,
                 secret_key=self.esi_secret_key,
                 headers={'User-Agent': "Krypted Platform"}
-                ).get_auth_uri(scopes=scope_list,
-                        state=self.esi_client_id)
+            ).get_auth_uri(scopes=scope_list,
+                           state=self.esi_client_id)
             cache.set(scope_string, esi_sso_url, timeout=86400)
             return esi_sso_url
 
@@ -102,7 +109,8 @@ class EveClient(DjangoSingleton):
                 token = kwargs.get('token')
                 for scope in required_scopes:
                     if scope not in token.scopes.all():
-                        raise EveMissingScopeException(f"EveClient was passed a token that is missing the required scopes: {scope}")
+                        raise EveMissingScopeException(
+                            f"EveClient was passed a token that is missing the required scopes: {scope}")
 
             elif 'character_id' in kwargs:
                 try:
@@ -126,7 +134,7 @@ class EveClient(DjangoSingleton):
                 except EveToken.DoesNotExist as e:
                     raise EveMissingScopeException(
                         'EveClient was passed a corporation_id that does not have the proper CEO token')
-            
+
             else:
                 raise Exception(
                     "Attempted to make protected EsiCall without valid token or auto-matching keyword argument")
@@ -140,12 +148,15 @@ class EveClient(DjangoSingleton):
                 operation(**kwargs), raise_on_error=raise_exception)
         else:
             logger.info(f"Calling ESI: {op} with arguments {kwargs}")
-            request = EveClient.get_esi_client().request(operation(**kwargs), raise_on_error=raise_exception)
-        
-        if request.status not in [200, 204]:
-            logger.warning(f"Failed ({request.status}) ESI call '{op}' with {kwargs}. Response: {request.data}")
+            request = EveClient.get_esi_client().request(
+                operation(**kwargs), raise_on_error=raise_exception)
 
-        return request 
+        if request.status not in [200, 204]:
+            logger.warning(
+                f"Failed ({request.status}) ESI call '{op}' with {kwargs}. Response: {request.data}")
+
+        return request
+
     @staticmethod
     def get_required_scopes(op):
         operation = EveClient.get_esi_app().op[op]
@@ -163,7 +174,7 @@ class EveClient(DjangoSingleton):
                                 "Encountered unknown scope '%s', please notify Krypted developers." % scope)
                         required_scopes.add(scope)
         return required_scopes
-        
+
     @staticmethod
     def get_instance():
         app_config = apps.get_app_config('django_eveonline_connector')
@@ -220,12 +231,14 @@ class EveClient(DjangoSingleton):
         verbose_name = "Eve Settings"
         verbose_name_plural = "Eve Settings"
 
+
 """
 EVE SSO Models 
 These models are used for the EVE Online token system
 """
 
-# TODO: remove type, all scopes added.. add scopes via fixtures 
+# TODO: remove type, all scopes added.. add scopes via fixtures
+
 
 class EveScope(models.Model):
     name = models.CharField(unique=True, max_length=128)
@@ -246,6 +259,7 @@ class EveScope(models.Model):
     def get_required():
         return EveScope.objects.filter(required=True)
 
+
 class EveToken(models.Model):
     access_token = models.TextField()
     refresh_token = models.TextField()
@@ -253,7 +267,8 @@ class EveToken(models.Model):
     expiry = models.DateTimeField(auto_now_add=True)
     invalidated = models.DateTimeField(blank=True, null=True, default=None)
     scopes = models.ManyToManyField("EveScope", blank=True)
-    requested_scopes = models.ManyToManyField("EveScope", blank=True, related_name="requested_scopes", default=EveScope.get_required)
+    requested_scopes = models.ManyToManyField(
+        "EveScope", blank=True, related_name="requested_scopes", default=EveScope.get_required)
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="eve_tokens", null=True)
 
@@ -267,15 +282,15 @@ class EveToken(models.Model):
     def valid(self):
         for scope in self.requested_scopes.all():
             if scope not in self.scopes.all():
-                return False 
+                return False
 
         for scope in EveScope.objects.filter(required=True):
             if scope not in self.scopes.all():
-                return False 
+                return False
 
         if self.invalidated:
             return False
-        return True 
+        return True
 
     def refresh(self):
         esi_security = EveClient.get_esi_security()
@@ -288,7 +303,7 @@ class EveToken(models.Model):
                 if not self.invalidated:
                     self.invalidated = timezone.now()
                     self.save()
-                return False    
+                return False
 
         if timezone.now() > self.expiry:
             if self.invalidated:
@@ -311,12 +326,12 @@ class EveToken(models.Model):
 
         return data
 
+
 """
 Entity Models
 These entity models are what all EVE Online data models are attached to.
 """
-from django_eveonline_connector.utilities.esi.universe import *
-from django_eveonline_connector.utilities.static.universe import *
+
 
 class EveEntity(models.Model):
     name = models.CharField(max_length=128)
@@ -340,7 +355,7 @@ class EveCharacter(EveEntity):
         if primary_character_obj:
             return primary_character_obj.character
         else:
-            return None 
+            return None
 
     @property
     def avatar(self):
@@ -365,22 +380,27 @@ class EveCharacter(EveEntity):
 
     def update_character_corporation(self, corporation_id=None):
         if not corporation_id:
-            response = EveClient.call('post_characters_affiliation', characters=[self.external_id])
+            response = EveClient.call(
+                'post_characters_affiliation', characters=[self.external_id])
             corporation_id = response.data[0]['corporation_id']
 
         if EveCorporation.objects.filter(external_id=corporation_id).exists():
-            self.corporation = EveCorporation.objects.get(external_id=corporation_id)
+            self.corporation = EveCorporation.objects.get(
+                external_id=corporation_id)
         else:
-            self.corporation = EveCorporation.create_from_external_id(external_id=corporation_id)
-        
-        self.save() 
+            self.corporation = EveCorporation.create_from_external_id(
+                external_id=corporation_id)
+
+        self.save()
 
     class Meta:
         permissions = [
-            ('view_corporation_characters', 'Can view characters of same corporation'),
+            ('view_corporation_characters',
+             'Can view characters of same corporation'),
             ('view_alliance_characters', 'Can view characters of same alliance'),
             ('view_all_characters', 'Can view all characters')
         ]
+
 
 class EveCorporation(EveEntity):
     ceo = models.OneToOneField(
@@ -406,33 +426,37 @@ class EveCorporation(EveEntity):
         return eve_corporation
 
     def validate_ceo(self):
-        valid = True 
-        required_scopes = ['esi-contracts.read_corporation_contracts.v1', 'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
+        valid = True
+        required_scopes = ['esi-contracts.read_corporation_contracts.v1',
+                           'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
         scopes = EveScope.objects.filter(name__in=required_scopes)
         for scope in scopes:
-                if scope not in self.ceo.token.scopes.all():
-                    self.ceo.token.requested_scopes.add(scope)
-                    valid = False 
-        
-        return valid 
+            if scope not in self.ceo.token.scopes.all():
+                self.ceo.token.requested_scopes.add(scope)
+                valid = False
 
+        return valid
 
     def save(self, *args, **kwargs):
-        required_scopes = ['esi-contracts.read_corporation_contracts.v1', 'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
+        required_scopes = ['esi-contracts.read_corporation_contracts.v1',
+                           'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
         scopes = EveScope.objects.filter(name__in=required_scopes)
         if self.track_corporation and self.ceo:
             if not self.validate_ceo():
-                self.track_corporation = False 
+                self.track_corporation = False
                 super(EveCorporation, self).save(*args, **kwargs)
-                raise EveMissingScopeException(f"CEO missing the requested scopes to enable corporation tracking. Please update token for {self.ceo}.")
+                raise EveMissingScopeException(
+                    f"CEO missing the requested scopes to enable corporation tracking. Please update token for {self.ceo}.")
         elif self.track_corporation and not self.ceo:
             from django_eveonline_connector.tasks import update_corporation_ceo
             update_corporation_ceo.apply_async(args=[self.external_id])
-            self.track_corporation = False 
+            self.track_corporation = False
             super(EveCorporation, self).save(*args, **kwargs)
-            raise EveMissingScopeException(f"Unable to track a corporation without a CEO. Queued corporation update job for {self.external_id}.")
+            raise EveMissingScopeException(
+                f"Unable to track a corporation without a CEO. Queued corporation update job for {self.external_id}.")
 
         super(EveCorporation, self).save(*args, **kwargs)
+
 
 class EveAlliance(EveEntity):
     executor = models.OneToOneField(
@@ -497,7 +521,8 @@ class EveEntityData(models.Model):
         Wrapper around self._create_esi_response, which is defined by the extending class. 
         """
         try:
-            processed_data = cls._create_from_esi_response(data, entity_external_id, *args, **kwargs)
+            processed_data = cls._create_from_esi_response(
+                data, entity_external_id, *args, **kwargs)
         except Exception as e:
             logger.warning(
                 "Failed to process ESI response for %s. Data: %s" % (cls.__name__, data))
@@ -575,7 +600,7 @@ class EveAsset(EveEntityData):
 
         if asset.category_id in EveAsset.get_bad_asset_category_ids():
             asset.location_name = "Unresolved Location"
-            return asset # skip resolving of location
+            return asset  # skip resolving of location
 
         # Location IDs suck to resolve, we must do different things for each type
         if asset.location_flag == "Hangar":
@@ -654,7 +679,7 @@ class EveContact(EveEntityData):
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
         if len(data) == 0:
-            return # no contacts
+            return  # no contacts
         # process user ids
         contact_ids_to_resolve = set()
         for contact in data:
@@ -687,7 +712,7 @@ class EveContact(EveEntityData):
         if 'contact_name' not in kwargs:
             logger.warning(
                 "Called without contact_name keyword argument. Performance decrease.")
-            contact.contact_name = resolve_ids([ data_row['contact_id'] ])[
+            contact.contact_name = resolve_ids([data_row['contact_id']])[
                 contact.contact_id]
         else:
             contact.contact_name = kwargs.get('contact_name')
@@ -770,10 +795,10 @@ class EveContract(EveEntityData):
         contract_id = data_row['contract_id']
         if EveContract.objects.filter(contract_id=contract_id).exists():
             contract = EveContract.objects.get(contract_id=contract_id)
-            update = True 
+            update = True
         else:
             contract = EveContract()
-            update = False 
+            update = False
 
         for key in data_row.keys():
             try:
@@ -781,10 +806,11 @@ class EveContract(EveEntityData):
                     data_row[key] = data_row[key].to_json()
                 setattr(contract, str(key), data_row[key])
             except AttributeError:
-                logger.error(f"Encountered unknown attribute {key} for EveContract")
+                logger.error(
+                    f"Encountered unknown attribute {key} for EveContract")
 
         if update:
-            return contract # the other fields will already be sorted out if we're doing an update
+            return contract  # the other fields will already be sorted out if we're doing an update
 
         if not 'resolved_ids' in kwargs:
             logger.warning(
@@ -796,13 +822,12 @@ class EveContract(EveEntityData):
         else:
             resolved_ids = kwargs.get('resolved_ids')
 
-
         contracts_response = EveClient.call(
             'get_characters_character_id_contracts_contract_id_items',
             character_id=entity_external_id, contract_id=contract.contract_id)
-    
+
         if not contracts_response:
-            items = None 
+            items = None
         else:
             items = []
             for item in contracts_response.data:
@@ -997,15 +1022,18 @@ class EveTransaction(EveEntityData):
         except Exception as e:
             transaction.location_name = resolve_location_from_location_id_location_type(
                 transaction.location_id, 'other', entity_external_id)
-        
+
         if not transaction.location_name:
             transaction.location_name = "Unknown Location"
 
         return transaction
 
+
 """
 Other EVE Models
 """
+
+
 class EveStructure(EveEntityData):
     # Base ESI Data
     corporation_id = models.BigIntegerField()
@@ -1047,7 +1075,6 @@ class EveStructure(EveEntityData):
             self.name = "Unknown Name"
         return f"{self.name}"
 
-
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
         for row in data:
@@ -1057,7 +1084,8 @@ class EveStructure(EveEntityData):
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
         logger.info("Creating EVE Structure")
         if EveStructure.objects.filter(structure_id=data_row['structure_id']).exists():
-            structure = EveStructure.objects.filter(structure_id=data_row['structure_id']).first()
+            structure = EveStructure.objects.filter(
+                structure_id=data_row['structure_id']).first()
         else:
             structure = EveStructure()
         for key in data_row.keys():
@@ -1066,7 +1094,8 @@ class EveStructure(EveEntityData):
                     data_row[key] = data_row[key].to_json()
                 setattr(structure, str(key), data_row[key])
             except AttributeError:
-                logger.error(f"Encountered unknown attribute {key} for EveStructure")
+                logger.error(
+                    f"Encountered unknown attribute {key} for EveStructure")
 
         additional_info = get_structure(
             data_row['structure_id'], entity_external_id).data
@@ -1091,17 +1120,22 @@ class EveStructure(EveEntityData):
 Static EVE Models
 These represent static EVE models that we need associations for.
 """
+
+
 class EveCorporationRole(models.Model):
     codename = models.CharField(max_length=64, unique=True)
     name = models.CharField(max_length=64, unique=True)
 
     def __str__(self):
-        return self.name 
-            
+        return self.name
+
+
 """
 EVE Connector Models
 Models for EVE Connector functionality 
 """
+
+
 class PrimaryEveCharacterAssociation(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="primary_evecharacter")
@@ -1128,14 +1162,16 @@ class PrimaryEveCharacterAssociation(models.Model):
     def get_related_characters(self):
         return EveCharacter.objects.filter(token__in=EveToken.objects.filter(user=self.user)).exclude(external_id=self.character.external_id)
 
+
 class EveCharacterInfo(models.Model):
     # TODO: Merge this into EveCharacter
-    character = models.OneToOneField(EveCharacter, on_delete=models.CASCADE, related_name="info")
-    
+    character = models.OneToOneField(
+        EveCharacter, on_delete=models.CASCADE, related_name="info")
+
     # game info
     skill_points = models.IntegerField(blank=True, null=True)
     net_worth = models.FloatField(blank=True, null=True)
-    
+
     # update statistics
     assets_last_updated = models.DateTimeField(blank=True, null=True)
     jump_clones_last_updated = models.DateTimeField(blank=True, null=True)
@@ -1148,11 +1184,12 @@ class EveCharacterInfo(models.Model):
     def __str__(self):
         return self.character.name
 
+
 class EveGroupRule(models.Model):
     group = models.OneToOneField(Group, on_delete=models.CASCADE)
     include_alts = models.BooleanField(default=True)
-    
-    # qualifiers 
+
+    # qualifiers
     characters = models.ManyToManyField("EveCharacter", blank=True)
     corporations = models.ManyToManyField("EveCorporation", blank=True)
     alliances = models.ManyToManyField("EveAlliance", blank=True)
@@ -1182,11 +1219,11 @@ class EveGroupRule(models.Model):
         else:
             return User.objects.none()
 
-    @property 
+    @property
     def missing_user_list(self):
         return self.valid_user_list.filter(~Q(groups=self.group))
 
-    @property 
+    @property
     def invalid_user_list(self):
         django_filter = Q()
         if self.characters.all():
