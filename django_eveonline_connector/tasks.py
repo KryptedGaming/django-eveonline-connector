@@ -74,7 +74,7 @@ def update_tokens():
 @shared_task
 def update_characters(jitter_max=1800):
     for eve_character in EveCharacter.objects.all():
-        if eve_character.token and eve_character.token.valid and eve_character.corporation.track_characters:
+        if eve_character.token and eve_character.token.valid and eve_character.corporation and eve_character.corporation.track_characters:
             logger.info(
                 f"Queueing batch update tasks for {eve_character.name}")
             jitter = (eve_character.pk*10) % jitter_max
