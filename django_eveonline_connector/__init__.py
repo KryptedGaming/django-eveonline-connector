@@ -7,7 +7,7 @@
 
 __title__ = 'EVE Online Connector'
 __package_name__ = 'django-eveonline-connector'
-__version__ = '1.2.2rc3'
+__version__ = '1.2.2rc4'
 __author__ = 'Krypted Gaming'
 __license__ = 'MIT License'
 __copyright__ = 'Copyright © 2017-2020 Krypted Gaming. All rights reserved.'
