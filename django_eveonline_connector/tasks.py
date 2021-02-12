@@ -320,9 +320,9 @@ def update_character_corporation_roles(character_id):
             codename__in=response.data['roles'])
         if roles != character.roles.all():
             character.roles.set(roles)
-    except Exception as e:
-        logger.error(
-            f"Error updating corporation roles for {character_id}. Clearing roles for safety. Error: {e}")
+    except Exception:
+        logger.exception(
+            f"Error updating corporation roles for {character_id}. Clearing roles for safety.")
         character.roles.clear()
 
 
