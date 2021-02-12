@@ -34,7 +34,7 @@ def resolve_names(names):
 
 def resolve_ids_with_types(ids):
     response = {}
-    for ids_segment in batch(ids, 999):
+    for ids_segment in batch(list(ids), 999):
         request = EveClient.call('post_universe_names', ids=ids_segment)
         if request.status != 200:
             raise EveDataResolutionError(
