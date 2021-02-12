@@ -566,7 +566,7 @@ class EveAsset(EveEntityData):
     category_id = models.IntegerField()
 
     # Our Conversions
-    item_name = models.CharField(max_length=128)  # typeName
+    item_name = models.CharField(max_length=255)  # typeName
     item_type = models.CharField(max_length=32)  # categoryName
     location_name = models.CharField(max_length=128)
 
@@ -766,7 +766,7 @@ class EveContract(EveEntityData):
     acceptor_name = models.CharField(max_length=64)
     assignee_name = models.CharField(max_length=64)
     issuer_name = models.CharField(max_length=64)
-    issuer_corporation_name = models.CharField(max_length=256)
+    issuer_corporation_name = models.CharField(max_length=255)
     acceptor_type = models.CharField(max_length=32, choices=id_types)
     assignee_type = models.CharField(max_length=32, choices=id_types)
     issuer_type = models.CharField(max_length=64, choices=id_types)
@@ -981,7 +981,7 @@ class EveTransaction(EveEntityData):
     client_name = models.CharField(max_length=64)
     client_type = models.CharField(max_length=64, choices=id_types)
     location_name = models.CharField(max_length=128)
-    item_name = models.CharField(max_length=64)
+    item_name = models.CharField(max_length=255)
 
     @property
     def get_journal_entry(self):
