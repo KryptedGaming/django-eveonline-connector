@@ -202,7 +202,8 @@ class EveClient(DjangoSingleton):
         EsiApp is used to get operations for Eve Swagger Interface 
         """
         try:
-            return cache.get('esi_app')
+            if 'esi_app' in cache:
+                return cache.get('esi_app')
         except Exception:
             esi_app = EsiApp(cache_time=86400).get_latest_swagger
             try:
