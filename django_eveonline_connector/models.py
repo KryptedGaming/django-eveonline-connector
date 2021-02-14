@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import User, Group
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
 from django_singleton_admin.models import DjangoSingleton
@@ -17,7 +17,6 @@ import json
 import traceback
 import pyswagger
 from django.db.models import Q
-User = settings.AUTH_USER_MODEL
 logger = logging.getLogger(__name__)
 app_config = apps.get_app_config('django_eveonline_connector')
 
@@ -448,6 +447,23 @@ class EveCorporation(EveEntity):
 
         return eve_corporation
 
+    def update_alliance(self):
+        response = EveClient.call(
+            'get_corporations_corporation_id', corporation_id=self.external_id)
+        if response != 200:
+            logger.error(f"Failed to update corporation {self.external_id}")
+        if 'alliance_id' not in response.data:
+            logger.info(
+                f"Skipping alliance resolution for corporation {self.external_id}, no alliance found")
+            return
+
+        alliance_id = response.data['alliance_id']
+        if EveAlliance.objects.filter(external_id=alliance_id).exists():
+            self.alliance = EveAlliance.objects.get(external_id=alliance_id)
+        else:
+            self.alliance = EveAlliance.create_from_external_id(alliance_id)
+            self.save()
+
     def validate_ceo(self):
         if self.ceo == None:
             return False
@@ -491,6 +507,29 @@ class EveAlliance(EveEntity):
 
     def save(self, *args, **kwargs):
         super(EveAlliance, self).save(*args, **kwargs)
+
+    def update_executor_corporation(self):
+        response = EveClient.call(
+            'get_alliances_alliance_id', alliance_id=self.external_id)
+        if response.status != 200:
+            logger.error(
+                f"Failed to update corporation for alliance {self.external_id}")
+            return
+
+        if 'executor_corporation_id' not in response.data:
+            corporation_id = response.data['creator_corporation_id']
+        else:
+            corporation_id = response.data['executor_corporation_id']
+
+        if EveCorporation.objects.filter(external_id=corporation_id).exists():
+            self.executor = EveCorporation.objects.get(
+                external_id=corporation_id)
+            self.save()
+        else:
+            corporation = EveCorporation.create_from_external_id(
+                corporation_id)
+            self.executor = corporation
+            self.save()
 
     @staticmethod
     def create_from_external_id(external_id):

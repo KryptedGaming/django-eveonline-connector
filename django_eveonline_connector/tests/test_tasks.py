@@ -7,27 +7,39 @@ from django.utils import timezone
 import pytz
 from unittest.mock import patch
 
+
 class MockResponseObject():
-    def __init__(self, status_code, data):
-        self.status_code = status_code 
+    def __init__(self, status, data):
+        self.status = status
         self.data = data
 
+
 def mock_update_corporations_for_pull_test():
-    corporation = EveCorporation.objects.get_or_create(external_id=200, name="DUMMY CORPORATION")[0]
+    corporation = EveCorporation.objects.get_or_create(
+        external_id=200, name="DUMMY CORPORATION")[0]
     character_2 = EveCharacter.objects.get(external_id=2)
     character_4 = EveCharacter.objects.get(external_id=4)
     character_2.corporation = corporation
     character_4.corporation = corporation
     character_2.save()
     character_4.save()
+
+
+def mock_corporation_create_from_external_id(corporation_id):
+    return EveCorporation.objects.create(
+        external_id=corporation_id,
+        name="Test Corporation"
+    )
+
+
 class UpdateTokenTest(TestCase):
     def setUp(self):
         self.client = EveClient.objects.create(esi_callback_url="TEST",
-                                 esi_client_id="TEST",
-                                 esi_secret_key="TEST")
+                                               esi_client_id="TEST",
+                                               esi_secret_key="TEST")
 
     def tearDown(self):
-        self.client.delete() 
+        self.client.delete()
 
     @patch('django_eveonline_connector.models.EveToken.refresh')
     def test_valid_token(self, mock_refresh):
@@ -37,8 +49,8 @@ class UpdateTokenTest(TestCase):
             name="Test Character"
         )
         token = EveToken.objects.create()
-        character.token = token 
-        character.save() 
+        character.token = token
+        character.save()
         token.scopes.set(EveScope.objects.all())
         self.assertTrue(token.valid)
         update_tokens()
@@ -55,7 +67,7 @@ class UpdateTokenTest(TestCase):
             name="Test Character"
         )
         token = EveToken.objects.create()
-        character.token = token 
+        character.token = token
         character.save()
         token.scopes.set(EveScope.objects.all())
         token.scopes.remove(EveScope.objects.filter(required=True)[0])
@@ -75,7 +87,7 @@ class UpdateTokenTest(TestCase):
             external_id=12345,
             name="Test Character"
         )
-        character.token = token 
+        character.token = token
         character.save()
         token.scopes.set(EveScope.objects.all())
         token.scopes.remove(EveScope.objects.filter(required=True)[0])
@@ -90,9 +102,11 @@ class UpdateTokenTest(TestCase):
         update_tokens()
         self.assertTrue(EveToken.objects.all().count() == 0)
 
+
 class PullCorporationRoster(TestCase):
     def setUp(self):
-        self.corporation = EveCorporation.objects.create(external_id=100, name="TEST CORPORATION")
+        self.corporation = EveCorporation.objects.create(
+            external_id=100, name="TEST CORPORATION")
         EveCharacter.objects.create(
             external_id=1, corporation=self.corporation)
         EveCharacter.objects.create(
@@ -107,13 +121,15 @@ class PullCorporationRoster(TestCase):
     @patch('django_eveonline_connector.tasks.EveClient.call')
     @patch('django_eveonline_connector.models.EveCharacter.update_character_corporation')
     def test_pull_roster(self, mock_character_update, mock_eve_client):
-        mock_character_update.return_value = MockResponseObject(status_code=200, data=[200])
+        mock_character_update.return_value = MockResponseObject(
+            status=200, data=[200])
         mock_character_update.side_effect = mock_update_corporations_for_pull_test()
-        mock_eve_client.return_value = MockResponseObject(status_code=200, data=[1,3,5])
+        mock_eve_client.return_value = MockResponseObject(
+            status=200, data=[1, 3, 5])
         pull_corporation_roster(self.corporation.external_id)
         characters = EveCharacter.objects.filter(corporation=self.corporation)
         character_ids = characters.values_list('external_id', flat=True)
-        self.assertTrue(list(character_ids) == [1,3,5])
+        self.assertTrue(list(character_ids) == [1, 3, 5])
 
 
 class AssignEveGroupsTest(TestCase):
@@ -134,9 +150,9 @@ class AssignEveGroupsTest(TestCase):
             external_id=512345
         )
         self.eve_character = EveCharacter.objects.create(name="TEST",
-            token=self.eve_token,
-            corporation=self.eve_corporation,
-            external_id=112345)
+                                                         token=self.eve_token,
+                                                         corporation=self.eve_corporation,
+                                                         external_id=112345)
 
     def tearDown(self):
         self.group.delete()
@@ -155,3 +171,69 @@ class AssignEveGroupsTest(TestCase):
         self.assertTrue(self.group not in self.excluded_user.groups.all())
         self.assertTrue(self.group not in self.excluded_user_2.groups.all())
         self.assertTrue(self.group in self.user.groups.all())
+
+
+class EveAllianceTest(TestCase):
+    def setUp(self):
+        self.alliance = EveAlliance.objects.create(
+            external_id=1, name="Test Alliance")
+
+    def tearDown(self):
+        EveAlliance.objects.all().delete()
+        EveCorporation.objects.all().delete()
+        EveCharacter.objects.all().delete()
+
+    def test_update_alliances(self):
+        from django_eveonline_connector.tasks import update_alliances
+        self.assertEqual(update_alliances(), None)
+
+    @patch('django_eveonline_connector.models.EveClient.call')
+    @patch('django_eveonline_connector.models.EveCorporation.create_from_external_id')
+    def test_update_alliance_executor_unknown_corporation(self, mock_corporation_call, mock_eve_client_call):
+        from django_eveonline_connector.tasks import update_alliance_executor
+        corporation_id = 2
+        mock_corporation_call.side_effect = mock_corporation_create_from_external_id
+        mock_eve_client_call.return_value = MockResponseObject(
+            status=200,
+            data={"executor_corporation_id": corporation_id}
+        )
+        update_alliance_executor(self.alliance.external_id)
+        self.assertTrue(EveAlliance.objects.get(
+            external_id=self.alliance.external_id).executor.external_id, corporation_id)
+
+    @patch('django_eveonline_connector.models.EveClient.call')
+    @patch('django_eveonline_connector.models.EveCorporation.create_from_external_id')
+    def test_update_alliance_executor_known_corporation(self, mock_corporation_call, mock_eve_client_call):
+        from django_eveonline_connector.tasks import update_alliance_executor
+        corporation_id = 3
+        EveCorporation.objects.create(
+            external_id=corporation_id,
+            name="Test Corporation"
+        )
+        mock_corporation_call.side_effect = mock_corporation_create_from_external_id
+        mock_eve_client_call.return_value = MockResponseObject(
+            status=200,
+            data={"executor_corporation_id": corporation_id}
+        )
+
+        update_alliance_executor(self.alliance.external_id)
+        self.assertTrue(EveAlliance.objects.get(
+            external_id=self.alliance.external_id).executor.external_id, corporation_id)
+
+    @patch('django_eveonline_connector.models.EveClient.call')
+    @patch('django_eveonline_connector.models.EveCorporation.create_from_external_id')
+    def test_update_alliance_executor_closed_alliance(self, mock_corporation_call, mock_eve_client_call):
+        from django_eveonline_connector.tasks import update_alliance_executor
+        corporation_id = 4
+        EveCorporation.objects.create(
+            external_id=corporation_id,
+            name="Test Corporation"
+        )
+        mock_corporation_call.side_effect = mock_corporation_create_from_external_id
+        mock_eve_client_call.return_value = MockResponseObject(
+            status=200,
+            data={"creator_corporation_id": corporation_id}
+        )
+        update_alliance_executor(self.alliance.external_id)
+        self.assertTrue(EveAlliance.objects.get(
+            external_id=self.alliance.external_id).executor.external_id, corporation_id)
