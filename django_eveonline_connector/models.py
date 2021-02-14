@@ -4,7 +4,8 @@ from esipy import EsiClient, EsiSecurity, EsiApp
 from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User, Group
+from django.conf import settings
+from django.contrib.auth.models import Group
 from django.utils.dateparse import parse_datetime
 from django.apps import apps
 from django_singleton_admin.models import DjangoSingleton
@@ -15,6 +16,7 @@ import json
 import traceback
 import pyswagger
 from django.db.models import Q
+User = settings.AUTH_USER_MODEL
 logger = logging.getLogger(__name__)
 app_config = apps.get_app_config('django_eveonline_connector')
 
