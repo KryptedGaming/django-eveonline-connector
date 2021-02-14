@@ -1,6 +1,18 @@
 import os
 from setuptools import find_packages, setup
 
+install_requires = [
+    'Django==2.2.13',
+    'esipy==1.0.0',
+    'celery>=4.3.0',
+    'django_datatables_view==1.19.1',
+    'django-singleton-admin-2>=1.1.0'
+]
+
+extras = {
+    'test': install_requires,
+}
+
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
@@ -31,10 +43,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
-    install_requires=[
-        'Django==2.2.13',
-        'esipy==1.0.0',
-        'celery>=4.3.0',
-        'django_datatables_view==1.19.1',
-    ]
+    install_requires=install_requires,
+    tests_require=install_requires,
+    extras_require=extras,
 )

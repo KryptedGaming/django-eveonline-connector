@@ -1,4 +1,4 @@
-from celery import task, shared_task
+from celery import shared_task
 from .models import *
 from django.utils import timezone
 from django.db.models import Q

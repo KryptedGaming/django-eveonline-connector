@@ -44,7 +44,7 @@ class EveClient(DjangoSingleton):
             for key in keys:
                 cache.delete(key)
         except Exception as e:
-            logger.error("Error clearing cache for ESI SSO URL keys: %s" + e)
+            logger.error(f"Error clearing cache for ESI SSO URL keys: {e}")
 
         super(EveClient, self).save(*args, **kwargs)
 
@@ -445,6 +445,9 @@ class EveCorporation(EveEntity):
         return eve_corporation
 
     def validate_ceo(self):
+        if self.ceo == None:
+            return False
+
         valid = True
         required_scopes = ['esi-contracts.read_corporation_contracts.v1',
                            'esi-corporations.read_structures.v1', 'esi-corporations.read_corporation_membership.v1']
