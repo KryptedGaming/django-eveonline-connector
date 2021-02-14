@@ -1,6 +1,7 @@
 
 
 from esipy import EsiClient, EsiSecurity, EsiApp
+from esipy.exceptions import APIException
 from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
@@ -311,12 +312,13 @@ class EveToken(models.Model):
 
         try:
             new_token = esi_security.refresh()
-        except Exception as e:
+        except APIException as e:
             if b"invalid_grant" in e.response:
                 if not self.invalidated:
                     self.invalidated = timezone.now()
                     self.save()
                 return False
+            logger.exception(f"Failed up refresh token. Error: {e}")
 
         if timezone.now() > self.expiry:
             if self.invalidated:

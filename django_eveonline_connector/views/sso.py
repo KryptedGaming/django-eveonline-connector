@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 """
 SSO Views
 """
+
+
 @login_required
 def sso_callback(request):
     code = request.GET.get('code', None)
@@ -52,7 +54,7 @@ def sso_callback(request):
             token=new_token,
         )
 
-    # if no primary user, set 
+    # if no primary user, set
     if not PrimaryEveCharacterAssociation.objects.filter(user=request.user).exists():
         PrimaryEveCharacterAssociation.objects.create(
             user=request.user,
@@ -64,31 +66,43 @@ def sso_callback(request):
 
     return redirect('/')
 
+
 @login_required
 def add_sso_token(request):
     try:
         sso_url = EveClient.get_instance().get_sso_url()
         return redirect(sso_url)
     except Exception as e:
-        messages.warning(request, "Eve Settings are not configured correctly. Contact your administrator.")
+        messages.warning(
+            request, "Eve Settings are not configured correctly. Contact your administrator.")
         return redirect('/')
+
 
 @login_required
 def update_sso_token(request, token_id):
     eve_token = EveToken.objects.get(pk=token_id)
     return redirect(EveClient.get_instance().get_sso_url(
         EveScope.convert_to_list(eve_token.requested_scopes.all())
-        ))
+    ))
+
 
 @login_required
 def remove_sso_token(request, pk):
     eve_token = EveToken.objects.get(pk=pk)
-    if request.user == eve_token.user:
-        if PrimaryEveCharacterAssociation.objects.filter(character=eve_token.evecharacter).exists():
-            PrimaryEveCharacterAssociation.objects.filter(character=eve_token.evecharacter).delete()
-        eve_token.delete()
 
-        messages.success(request, "Successfully deleted EVE Online character")
+    if request.user == eve_token.user:
+        try:
+            if PrimaryEveCharacterAssociation.objects.filter(character=eve_token.evecharacter).exists():
+                PrimaryEveCharacterAssociation.objects.filter(
+                    character=eve_token.evecharacter).delete()
+        except Exception:
+            logger.exception(
+                "Encountered error when deleting token character associations")
+        eve_token.delete()
     else:
         messages.error(request, "You cannot delete someone elses token.")
+
+    messages.success(
+        request, "Successfully deleted EVE Online token and character data")
+
     return redirect("/")
