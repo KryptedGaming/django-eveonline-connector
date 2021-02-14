@@ -132,7 +132,13 @@ class CharacterJson(BaseDatatableView):
     model = EveCharacter
     columns = ['status', 'character',
                'primary_character', 'corporation', 'alliance']
-    order_columns = ['character', 'corporation', 'alliance']
+    order_columns = [
+        None,
+        'name',
+        None,
+        'corporation__name',
+        'corporation__alliance__name'
+    ]
 
     def filter_queryset(self, qs):
         search = self.request.GET.get('search[value]', None)
