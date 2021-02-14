@@ -11,32 +11,36 @@ from django_eveonline_connector.utilities.esi.universe import resolve_id
 from django_datatables_view.base_datatable_view import BaseDatatableView
 from django.contrib.auth.decorators import login_required, permission_required
 from django.utils.html import escape
-import json 
+import json
 
-# Utilities 
+# Utilities
+
+
 @login_required
 def get_entity_info(request):
-    external_id = None 
+    external_id = None
     if 'external_id' not in request.GET:
         return HttpResponse(status=400)
     else:
         external_id = request.GET['external_id']
     print(external_id)
-    
+
     entity = resolve_id(external_id)
 
     if not entity:
         return HttpResponse(status=404)
 
     if entity['type'] == "character":
-        response = EveClient.call('get_characters_character_id', character_id=external_id).data
+        response = EveClient.call(
+            'get_characters_character_id', character_id=external_id).data
         return JsonResponse({
             "type": "character",
             "name": response['name'],
             "external_id": external_id,
         })
     elif entity['type'] == "corporation":
-        response = EveClient.call('get_corporations_corporation_id', corporation_id=external_id).data
+        response = EveClient.call(
+            'get_corporations_corporation_id', corporation_id=external_id).data
         return JsonResponse({
             "type": "corporation",
             "name": response['name'],
@@ -45,9 +49,10 @@ def get_entity_info(request):
             "alliance_id": response['alliance_id'],
         })
     elif entity['type'] == "alliance":
-        response = EveClient.call('get_alliances_alliance_id', alliance_id=external_id).data
+        response = EveClient.call(
+            'get_alliances_alliance_id', alliance_id=external_id).data
         return JsonResponse({
-            "type": "alliance", 
+            "type": "alliance",
             "name": response['name'],
             "ticker": response['ticker'],
             "external_id": external_id,
@@ -56,11 +61,11 @@ def get_entity_info(request):
         return HttpResponse(status=500)
 
 
-
 # Character Lookups
 @login_required
 def get_characters(request):
     return CharacterJson.as_view()(request)
+
 
 @login_required
 @permission_required('django_eveonline_connector.view_eveasset', raise_exception=True)
@@ -124,29 +129,31 @@ def get_transactions(request):
 
 # JSON Class Views
 class CharacterJson(BaseDatatableView):
-    model = EveCharacter 
-    columns = ['status', 'character', 'primary_character', 'corporation', 'alliance']
-    order_columns = [ 'character', 'corporation', 'alliance']
+    model = EveCharacter
+    columns = ['status', 'character',
+               'primary_character', 'corporation', 'alliance']
+    order_columns = ['character', 'corporation', 'alliance']
 
     def filter_queryset(self, qs):
         search = self.request.GET.get('search[value]', None)
         if search:
-            search_filter = Q(name__istartswith=search) |  Q(token__user__primary_evecharacter__character__name__istartswith=search) | Q(corporation__name__istartswith=search) | Q(corporation__alliance__name__istartswith=search)
+            search_filter = Q(name__istartswith=search) | Q(token__user__primary_evecharacter__character__name__istartswith=search) | Q(
+                corporation__name__istartswith=search) | Q(corporation__alliance__name__istartswith=search)
         else:
-            search_filter = Q() 
+            search_filter = Q()
 
-        if self.request.user.has_perm('django_eveonline_connector.view_all_characters'): 
+        if self.request.user.has_perm('django_eveonline_connector.view_all_characters'):
             return qs.filter(search_filter)
         elif self.request.user.has_perm('django_eveonline_connector.view_corporation_characters'):
-            corporation_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation', flat=True)
+            corporation_set = EveCharacter.objects.filter(
+                token__user=self.request.user).values_list('corporation', flat=True)
             return qs.filter(Q(corporation__pk__in=corporation_set) & search_filter)
         elif self.request.user.has_perm('django_eveonline_connector.view_alliance_characters'):
-            alliance_set = EveCharacter.objects.filter(token__user=self.request.user).values_list('corporation__alliance', flat=True)
+            alliance_set = EveCharacter.objects.filter(
+                token__user=self.request.user).values_list('corporation__alliance', flat=True)
             return qs.filter(Q(corporation__alliance__pk__in=alliance_set) & search_filter)
         else:
             return qs.filter(Q(token__user=self.request.user) & search_filter)
-
-    
 
     def prepare_results(self, qs):
         json_data = []
@@ -183,9 +190,9 @@ class CharacterJson(BaseDatatableView):
                     <a href="%s">%s</a>
                     """ % (primary_character.external_id, reverse("django-eveonline-connector-view-character", kwargs={"external_id": character.token.user.primary_evecharacter.character.external_id}), character.token.user.primary_evecharacter.character.name)
                 else:
-                    primary_character_row=""
-            except User.primary_evecharacter.RelatedObjectDoesNotExist as e: 
-                primary_character_row="" 
+                    primary_character_row = ""
+            except User.primary_evecharacter.RelatedObjectDoesNotExist as e:
+                primary_character_row = ""
 
             if character.corporation:
                 corporation_row = """
@@ -205,13 +212,14 @@ class CharacterJson(BaseDatatableView):
 
             json_data.append([
                 status,
-                character_row, 
+                character_row,
                 primary_character_row,
                 corporation_row,
                 alliance_row
             ])
 
         return json_data
+
 
 class AssetJson(BaseDatatableView):
     model = EveAsset
@@ -222,7 +230,8 @@ class AssetJson(BaseDatatableView):
         # implement searching
         search = self.request.GET.get('search[value]', None)
         if search:
-            qs = qs.filter(Q(item_name__istartswith=search) | Q(location_name__istartswith=search))
+            qs = qs.filter(Q(item_name__istartswith=search) |
+                           Q(location_name__istartswith=search))
 
         # return character
         external_id = self.request.GET.get('external_id')
@@ -275,9 +284,9 @@ class ContactJson(BaseDatatableView):
         search = self.request.GET.get('search[value]', None)
         if search:
             qs = qs.filter(
-                Q(contact_name__istartswith=search) | 
+                Q(contact_name__istartswith=search) |
                 Q(contact_type__istartswith=search)
-                )
+            )
 
         # return character
         external_id = self.request.GET.get('external_id')
@@ -287,7 +296,8 @@ class ContactJson(BaseDatatableView):
         json_data = []
         for item in qs:
             json_data.append([
-                '<a onclick="setModalID(%s)" href="#" data-toggle="modal" data-target="#entityModal">%s</a>' % (item.contact_id, item.contact_name),
+                '<a onclick="setModalID(%s)" href="#" data-toggle="modal" data-target="#entityModal">%s</a>' % (
+                    item.contact_id, item.contact_name),
                 item.contact_type.title(),
                 item.standing
             ])
@@ -307,7 +317,7 @@ class ContractJson(BaseDatatableView):
         if search:
             qs = qs.filter(Q(issuer_name__istartswith=search) |
                            Q(assignee_name__istartswith=search) |
-                           Q(type__istartswith=search) | 
+                           Q(type__istartswith=search) |
                            Q(status__istartswith=search)
                            )
 
@@ -360,8 +370,10 @@ class ContractJson(BaseDatatableView):
 
 class JournalJson(BaseDatatableView):
     model = EveJournalEntry
-    columns = ['date', 'ref_type', 'first_party_name', 'second_party_name', 'amount']
-    order_columns = ['date', 'ref_type', 'first_party_name', 'second_party_name', 'amount']
+    columns = ['date', 'ref_type', 'first_party_name',
+               'second_party_name', 'amount']
+    order_columns = ['date', 'ref_type',
+                     'first_party_name', 'second_party_name', 'amount']
 
     def filter_queryset(self, qs):
         # implement searching

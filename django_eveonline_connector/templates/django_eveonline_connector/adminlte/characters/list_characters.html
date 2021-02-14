@@ -13,36 +13,36 @@ EVE Characters
 {% block content %}
 
 <div class="card card-primary">
-<div class="card-body">
-<table class="datatable table table-bordered table-hover">
-    <thead>
-        <tr>
-            <th></th>
-            <th>Character</th>
-            <th>Primary Character</th>
-            <th>Corporation</th>
-            <th>Alliance</th>
-        </tr>
-    </thead>
-</table>
-</div>
+    <div class="card-body">
+        <table class="datatable table table-bordered table-hover responsive">
+            <thead>
+                <tr>
+                    <th class="col-md-1"></th>
+                    <th class="col-md-2">Character</th>
+                    <th class="col-md-2">Primary Character</th>
+                    <th class="col-md-2">Corporation</th>
+                    <th class="col-md-2">Alliance</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
 </div>
 {% endblock %}
 <!-- /.content -->
 
 {% block scripts %}
 <script>
-$('.datatable').DataTable({
+    $('.datatable').DataTable({
         'paging': true,
         'lengthChange': true,
         "columnDefs": [
             {
-            "targets": 0,
-            "orderable": false
+                "targets": 0,
+                "orderable": false
             },
             {
                 "targets": 2,
-                "orderable": false, 
+                "orderable": false,
             }
         ],
         'searching': true,
