@@ -72,46 +72,18 @@ def update_tokens():
 
 
 @shared_task
-def update_characters(jitter_max=1800):
+def update_characters():
     for eve_character in EveCharacter.objects.all():
         if eve_character.token and eve_character.token.valid and eve_character.corporation and eve_character.corporation.track_characters:
             logger.info(
                 f"Queueing batch update tasks for {eve_character.name}")
-            jitter = (eve_character.pk*10) % jitter_max
-            update_character_assets.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_contacts.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_contracts.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_journal.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_jumpclones.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_skills.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
-
-            update_character_transactions.apply_async(
-                args=[eve_character.external_id],
-                countdown=jitter)
+            update_character.apply_async(args=[eve_character.external_id])
 
 
 @shared_task
 def update_character(character_id):
     eve_character = EveCharacter.objects.get(external_id=character_id)
-    eve_character.update_character_corporation()
-
+    # Queue Tasks
     update_character_assets.apply_async(
         args=[eve_character.external_id])
 
@@ -133,15 +105,9 @@ def update_character(character_id):
     update_character_transactions.apply_async(
         args=[eve_character.external_id])
 
-
-@shared_task
-def update_character_roles():
-    for eve_character in EveCharacter.objects.all():
-        if eve_character.token and eve_character.token.valid:
-            update_character_corporation_roles.apply_async(
-                args=[eve_character.external_id])
-        else:
-            eve_character.roles.clear()
+    # Additional Updates
+    eve_character.update_character_corporation()
+    eve_character.update_character_corporation_roles()
 
 
 @shared_task
@@ -174,23 +140,28 @@ def update_corporations():
 def update_corporation(corporation_id):
     corporation = EveCorporation.objects.get(external_id=corporation_id)
     corporation.update_alliance()
-
-    try:
+    corporation.update_ceo()
+    corporation.refresh_from_db()
+    if not corporation.validate_ceo():
+        corporation.track_corporation = False
         corporation.save()
-    except EveMissingScopeException:
         logger.warning(
-            f"Corporation tracking for {corporation.name} has been disabled. Improper CEO token.")
-
-    update_corporation_ceo.apply_async(args=[corporation_id])
+            "Tracking has been disabled for {corporation.name} due to invalid CEO token.")
 
     if corporation.track_corporation:
-        pull_corporation_roster.apply_async(args=[corporation_id])
+        corporation.update_related_characters()
 
 
 @shared_task
 def update_alliances():
     for eve_alliance in EveAlliance.objects.all():
-        update_alliance_executor.apply_async(args=[eve_alliance.external_id])
+        update_alliance.apply_async(args=[eve_alliance.external_id])
+
+
+@shared_task
+def update_alliance(alliance_id):
+    eve_alliance = EveAlliance.objects.get(external_id=alliance_id)
+    eve_alliance.update_executor_corporation()
 
 
 @shared_task
@@ -200,11 +171,11 @@ def update_structures():
             update_corporation_eveentitydata(
                 'corporations_corporation_id_structures', EveStructure, eve_corporation.external_id)
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
 
 
 """
-Character tasks 
+Data Model Tasks
 """
 
 
@@ -327,7 +298,7 @@ def update_character_corporation_roles(character_id):
 
 
 """
-Corporatoin Tasks 
+Corporation Tasks
 """
 
 
@@ -365,56 +336,3 @@ def update_corporation_eveentitydata(op, data_model, corporation_id, delete=Fals
     data_model.create_from_esi_response(items, corporation.external_id)
 
     return items
-
-
-"""
-Helper Tasks
-"""
-
-
-@shared_task
-def update_corporation_ceo(corporation_id):
-    esi_operation = EveClient.get_esi_app(
-    ).op['get_corporations_corporation_id'](corporation_id=corporation_id)
-    response = EveClient.get_esi_client().request(esi_operation)
-
-    ceo_id = response.data['ceo_id']
-    eve_corporation = EveCorporation.objects.get(external_id=corporation_id)
-    if EveCharacter.objects.filter(external_id=ceo_id).exists():
-        eve_corporation.ceo = EveCharacter.objects.get(external_id=ceo_id)
-    else:
-        logger.info(
-            f"Skipping CEO update for {eve_corporation.external_id}: CEO not in database")
-
-    eve_corporation.save()
-
-
-@shared_task
-def pull_corporation_roster(corporation_id):
-    corporation = EveCorporation.objects.get(external_id=corporation_id)
-    if not corporation.validate_ceo():
-        logger.warning(
-            f"Failed to update corporation roster for {corporation.name}. Improper CEO token.")
-        return
-    token = corporation.ceo.token
-    roster = EveClient.call('get_corporations_corporation_id_members',
-                            token=token, corporation_id=corporation_id)
-    members_to_update = EveCharacter.objects.filter(
-        ~Q(external_id__in=roster.data))
-    ids_that_exist = EveCharacter.objects.filter(
-        external_id__in=roster.data).values_list('external_id', flat=True)
-
-    for character in roster.data:
-        if character not in ids_that_exist:
-            EveCharacter.create_from_external_id(character)
-        else:
-            logger.info(f"skipping {character} due to already existing")
-
-    for member in members_to_update:
-        member.update_character_corporation()
-
-
-@shared_task
-def update_alliance_executor(alliance_id):
-    eve_alliance = EveAlliance.objects.get(external_id=alliance_id)
-    eve_alliance.update_executor_corporation()

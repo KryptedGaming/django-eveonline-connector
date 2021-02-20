@@ -40,14 +40,7 @@ class EveClient(DjangoSingleton):
     esi_secret_key = models.CharField(max_length=255)
 
     def save(self, *args, **kwargs):
-        try:
-            keys = cache.keys('esi_sso_url*')
-
-            for key in keys:
-                cache.delete(key)
-        except Exception as e:
-            logger.error(f"Error clearing cache for ESI SSO URL keys: {e}")
-
+        cache.delete('esi_sso_urls')
         super(EveClient, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -74,9 +67,10 @@ class EveClient(DjangoSingleton):
             Q(name__in=extra_scopes)
         ))
         scope_string = ",".join(scope_list)
-        scope_string = f"esi_sso_url:{scope_string}"
-        if scope_string in cache:
-            return cache.get(scope_string)
+        scope_string = f"{scope_string}"
+        cached_urls = cache.get('esi_sso_urls')
+        if scope_string in cached_urls:
+            return cached_urls[scope_string]
         else:
             esi_sso_url = EsiSecurity(
                 client_id=self.esi_client_id,
@@ -85,7 +79,8 @@ class EveClient(DjangoSingleton):
                 headers={'User-Agent': "Krypted Platform"}
             ).get_auth_uri(scopes=scope_list,
                            state=self.esi_client_id)
-            cache.set(scope_string, esi_sso_url, timeout=86400)
+            cached_urls[scope_string] = scope_string
+            cache.set('esi_sso_urls', cached_urls, timeout=86400)
             return esi_sso_url
 
     @staticmethod
@@ -396,15 +391,15 @@ class EveCharacter(EveEntity):
 
         return eve_character
 
-    def update_character_corporation(self, corporation_id=None):
-        if not corporation_id:
-            try:
-                response = EveClient.call(
-                    'post_characters_affiliation', characters=[self.external_id])
-                corporation_id = response.data[0]['corporation_id']
-            except Exception as e:
-                logger.error(
-                    f"Error pulling corporation for character. Error: {e}. Response: {response.data}")
+    def update_character_corporation(self):
+        try:
+            response = EveClient.call(
+                'post_characters_affiliation', characters=[self.external_id])
+            corporation_id = response.data[0]['corporation_id']
+        except Exception:
+            logger.exception(
+                f"Failed to pull corporation for character {self.external_id}... {response.data}")
+            return
 
         if EveCorporation.objects.filter(external_id=corporation_id).exists():
             self.corporation = EveCorporation.objects.get(
@@ -414,6 +409,26 @@ class EveCharacter(EveEntity):
                 external_id=corporation_id)
 
         self.save()
+
+    def update_character_corporation_roles(self):
+        character_id = self.external_id
+        try:
+            self.update_character_corporation()
+            eve_client = EveClient.get_instance()
+            response = eve_client.call(
+                op='get_characters_character_id_roles', character_id=character_id)
+            if response.status != 200:
+                logger.error(
+                    f"Failed to pull corporation roles for character {character_id}. Response: {response.data}")
+                return
+            roles = EveCorporationRole.objects.filter(
+                codename__in=response.data['roles'])
+            if roles != self.roles.all():
+                self.roles.set(roles)
+        except Exception:
+            logger.exception(
+                f"Error updating corporation roles for {character_id}. Clearing roles for safety.")
+            self.roles.clear()
 
     class Meta:
         permissions = [
@@ -447,6 +462,24 @@ class EveCorporation(EveEntity):
 
         return eve_corporation
 
+    def update_ceo(self):
+        corporation_id = self.external_id
+
+        esi_operation = EveClient.get_esi_app(
+        ).op['get_corporations_corporation_id'](corporation_id=corporation_id)
+
+        response = EveClient.get_esi_client().request(esi_operation)
+
+        ceo_id = response.data['ceo_id']
+
+        if EveCharacter.objects.filter(external_id=ceo_id).exists():
+            self.ceo = EveCharacter.objects.get(external_id=ceo_id)
+        else:
+            logger.info(
+                f"Skipping CEO update for {corporation_id}: CEO not in database")
+
+        self.save()
+
     def update_alliance(self):
         response = EveClient.call(
             'get_corporations_corporation_id', corporation_id=self.external_id)
@@ -463,6 +496,21 @@ class EveCorporation(EveEntity):
         else:
             self.alliance = EveAlliance.create_from_external_id(alliance_id)
             self.save()
+
+    def update_related_characters(self):
+        """
+        Pulls the member list of the corporation and creates missing characters.
+        """
+        response = EveClient.call('get_corporations_corporation_id_members',
+                                  token=self.ceo.token, corporation_id=self.external_id)
+        ids_that_exist = EveCharacter.objects.filter(
+            external_id__in=roster.data).values_list('external_id', flat=True)
+
+        for character in response.data:
+            if character not in ids_that_exist:
+                EveCharacter.create_from_external_id(character)
+            else:
+                logger.info(f"skipping {character} due to already existing")
 
     def validate_ceo(self):
         if self.ceo == None:
@@ -490,12 +538,11 @@ class EveCorporation(EveEntity):
                 raise EveMissingScopeException(
                     f"CEO missing the requested scopes to enable corporation tracking. Please update token for {self.ceo}.")
         elif self.track_corporation and not self.ceo:
-            from django_eveonline_connector.tasks import update_corporation_ceo
-            update_corporation_ceo.apply_async(args=[self.external_id])
+            self.update_ceo()
             self.track_corporation = False
             super(EveCorporation, self).save(*args, **kwargs)
             raise EveMissingScopeException(
-                f"Unable to track a corporation without a CEO. Queued corporation update job for {self.external_id}.")
+                f"Unable to track a corporation without a CEO. Please add CEO token.")
 
         super(EveCorporation, self).save(*args, **kwargs)
 
