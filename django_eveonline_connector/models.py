@@ -81,7 +81,7 @@ class EveClient(DjangoSingleton):
                 headers={'User-Agent': "Krypted Platform"}
             ).get_auth_uri(scopes=scope_list,
                            state=self.esi_client_id)
-            cached_urls[scope_string] = scope_string
+            cached_urls[scope_string] = esi_sso_url
             cache.set('esi_sso_urls', cached_urls, timeout=86400)
             return esi_sso_url
 
