@@ -267,28 +267,6 @@ def update_character_transactions(character_id, *args, **kwargs):
         op, *args, delete=False, **kwargs, character_id=character_id, data_model=data_model)
 
 
-@shared_task
-def update_character_corporation_roles(character_id):
-    character = EveCharacter.objects.get(external_id=character_id)
-    try:
-        character.update_character_corporation()
-        eve_client = EveClient.get_instance()
-        response = eve_client.call(
-            op='get_characters_character_id_roles', character_id=character_id)
-        if response.status != 200:
-            logger.error(
-                f"Failed to pull corporation roles for character {character_id}. Response: {response.data}")
-            return
-        roles = EveCorporationRole.objects.filter(
-            codename__in=response.data['roles'])
-        if roles != character.roles.all():
-            character.roles.set(roles)
-    except Exception:
-        logger.exception(
-            f"Error updating corporation roles for {character_id}. Clearing roles for safety.")
-        character.roles.clear()
-
-
 """
 Corporation Tasks
 """
