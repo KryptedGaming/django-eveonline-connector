@@ -69,7 +69,7 @@ class EveClient(DjangoSingleton):
         scope_string = ",".join(scope_list)
         scope_string = f"{scope_string}"
         cached_urls = cache.get('esi_sso_urls')
-        if scope_string in cached_urls:
+        if cached_urls and scope_string in cached_urls:
             return cached_urls[scope_string]
         else:
             esi_sso_url = EsiSecurity(
