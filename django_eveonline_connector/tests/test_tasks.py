@@ -258,8 +258,8 @@ class TestEveCorporationTasks(TestCase):
 
     @patch('django_eveonline_connector.models.EveCorporation.validate_ceo')
     @patch('django_eveonline_connector.models.EveCorporation.update_related_characters')
-    @patch('django_eveonline_connector.models.EveCorporation.update_ceo')
-    @patch('django_eveonline_connector.models.EveCorporation.update_alliance')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_ceo')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_alliance')
     def test_update_corporation_valid_corporation(self, mock_update_alliance, mock_update_ceo, mock_update_related_characters, mock_validate_ceo):
         from django_eveonline_connector.tasks import update_corporation
         mock_update_alliance.return_value = None
@@ -270,8 +270,8 @@ class TestEveCorporationTasks(TestCase):
         update_corporation(tracked_corporation.external_id)
 
     @patch('django_eveonline_connector.models.EveCorporation.update_related_characters')
-    @patch('django_eveonline_connector.models.EveCorporation.update_ceo')
-    @patch('django_eveonline_connector.models.EveCorporation.update_alliance')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_ceo')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_alliance')
     def test_update_corporation_invalid_corporation(self, mock_update_alliance, mock_update_ceo, mock_update_related_characters):
         from django_eveonline_connector.tasks import update_corporation
         mock_update_alliance.return_value = None
@@ -285,8 +285,8 @@ class TestEveCorporationTasks(TestCase):
 
     @patch('django_eveonline_connector.models.EveCorporation.validate_ceo')
     @patch('django_eveonline_connector.models.EveCorporation.update_related_characters')
-    @patch('django_eveonline_connector.models.EveCorporation.update_ceo')
-    @patch('django_eveonline_connector.models.EveCorporation.update_alliance')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_ceo')
+    @patch('django_eveonline_connector.models.EveCorporation.update_corporation_alliance')
     def test_update_corporation_invalidate_corporation(self, mock_update_alliance, mock_update_ceo, mock_update_related_characters, mock_validate_ceo):
         from django_eveonline_connector.tasks import update_corporation
         mock_update_alliance.return_value = None

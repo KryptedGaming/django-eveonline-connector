@@ -466,7 +466,7 @@ class EveCorporation(EveEntity):
 
         return eve_corporation
 
-    def update_ceo(self):
+    def update_corporation_ceo(self):
         corporation_id = self.external_id
 
         esi_operation = EveClient.get_esi_app(
@@ -484,11 +484,9 @@ class EveCorporation(EveEntity):
 
         self.save()
 
-    def update_alliance(self):
+    def update_corporation_alliance(self):
         response = EveClient.call(
-            'get_corporations_corporation_id', corporation_id=self.external_id)
-        if response != 200:
-            logger.error(f"Failed to update corporation {self.external_id}")
+            'get_corporations_corporation_id', corporation_id=self.external_id, raise_exception=True)
         if 'alliance_id' not in response.data:
             logger.info(
                 f"Skipping alliance resolution for corporation {self.external_id}, no alliance found")
@@ -542,7 +540,7 @@ class EveCorporation(EveEntity):
                 raise EveMissingScopeException(
                     f"CEO missing the requested scopes to enable corporation tracking. Please update token for {self.ceo}.")
         elif self.track_corporation and not self.ceo:
-            self.update_ceo()
+            self.update_corporation_ceo()
             self.track_corporation = False
             super(EveCorporation, self).save(*args, **kwargs)
             raise EveMissingScopeException(
@@ -585,16 +583,12 @@ class EveAlliance(EveEntity):
     @staticmethod
     def create_from_external_id(external_id):
         response = EveClient.call(
-            'get_alliances_alliance_id', alliance_id=external_id)
+            'get_alliances_alliance_id', alliance_id=external_id, raise_exception=True)
 
-        eve_alliance = EveAlliance(
+        return EveAlliance.objects.create(
             name=response.data['name'],
             ticker=response.data['ticker'],
             external_id=external_id)
-
-        eve_alliance.save()
-
-        return eve_alliance
 
 
 """

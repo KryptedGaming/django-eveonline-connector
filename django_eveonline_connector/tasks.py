@@ -131,8 +131,8 @@ def update_corporations():
 @shared_task
 def update_corporation(corporation_id):
     corporation = EveCorporation.objects.get(external_id=corporation_id)
-    corporation.update_alliance()
-    corporation.update_ceo()
+    corporation.update_corporation_alliance()
+    corporation.update_corporation_ceo()
     corporation.refresh_from_db()
     if not corporation.validate_ceo():
         corporation.track_corporation = False
