@@ -618,13 +618,12 @@ class EveEntityData(models.Model):
             db_object.entity = EveEntity.objects.get(
                 external_id=entity_external_id)
             db_object.save()
-        except Exception as e:
+        except Exception:
             message = (
                 f"Failed to create {cls.__name__} from ESI data row: {data_row}.\n"
                 f"Failed for entity {entity_external_id}\n"
             )
-            logger.warning(message)
-            logger.error(e, exc_info=True)
+            logger.exception(message)
 
     @staticmethod
     def _create_from_esi_row(data_row, entity_external_id, *args, **kwargs):
@@ -639,10 +638,9 @@ class EveEntityData(models.Model):
         try:
             processed_data = cls._create_from_esi_response(
                 data, entity_external_id, *args, **kwargs)
-        except Exception as e:
-            logger.warning(
+        except Exception:
+            logger.exception(
                 "Failed to process ESI response for %s. Data: %s" % (cls.__name__, data))
-            logger.exception(e)
 
     @staticmethod
     def _create_from_esi_response(data, entity_external_id, *args, **kwargs):
