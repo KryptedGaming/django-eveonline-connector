@@ -182,7 +182,7 @@ def update_character_eveentitydata(op, data_model, character_id, delete=False):
 
     if response.status != 200:
         logger.error(
-            f"Failed to batch update {data_model} for {character_id}: {response.header} {response.data}")
+            f"[{response.status}] Failed to batch update {data_model.__name__} for {character_id}: {response.header} {response.data}")
         return
 
     items = response.data
@@ -284,7 +284,7 @@ def update_corporation_eveentitydata(op, data_model, corporation_id, delete=Fals
 
     if response.status != 200:
         logger.error(
-            f"Failed to batch update {data_model} for {character_id}: {response.header} {response.data}")
+            f"[{response.status}] Failed to batch update {data_model.__name__} for {character_id}: {response.header} {response.data}")
         return
 
     items = response.data
