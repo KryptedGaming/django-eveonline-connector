@@ -72,7 +72,8 @@ def add_sso_token(request):
     try:
         sso_url = EveClient.get_instance().get_sso_url()
         return redirect(sso_url)
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to get SSO url from EveClient")
         messages.warning(
             request, "Eve Settings are not configured correctly. Contact your administrator.")
         return redirect('/')
