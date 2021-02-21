@@ -4,6 +4,14 @@ from django_eveonline_connector.models import EveToken, EveScope, EveCharacter, 
 from unittest.mock import patch
 
 
+def mock_raise_exception(*args, **kwargs):
+    raise Exception('test')
+
+
+def random_external_id():
+    return uuid.uuid4().int & (1 << 32)-1
+
+
 def clean_eve_models():
     EveToken.objects.all().delete()
     EveCharacter.objects.all().delete()

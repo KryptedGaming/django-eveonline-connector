@@ -393,22 +393,24 @@ class EveCharacter(EveEntity):
 
         return eve_character
 
-    def update_character_corporation(self):
-        try:
+    def update_character_corporation(self, corporation_id=None):
+        if not corporation_id:
             response = EveClient.call(
                 'post_characters_affiliation', characters=[self.external_id])
+
+            if response.status != 200:
+                logger.error(
+                    f"[ERR {response.status}] Failed to pull corporation for character {self.external_id}... {response.data}")
+                return
+
             corporation_id = response.data[0]['corporation_id']
-        except Exception:
-            logger.exception(
-                f"Failed to pull corporation for character {self.external_id}... {response.data}")
-            return
 
         if EveCorporation.objects.filter(external_id=corporation_id).exists():
             self.corporation = EveCorporation.objects.get(
                 external_id=corporation_id)
         else:
             self.corporation = EveCorporation.create_from_external_id(
-                external_id=corporation_id)
+                corporation_id)
 
         self.save()
 

@@ -3,6 +3,7 @@ from .models import *
 from django.utils import timezone
 from django.db.models import Q
 from django_eveonline_connector.exceptions import EveMissingScopeException
+from django_eveonline_connector.utilities.esi.universe import batch
 
 import logging
 import pytz
@@ -17,39 +18,30 @@ These are what users register to maintain up-to-date EveEntity information.
 @shared_task
 def update_affiliations():
     """
-    Update the affiliations (character corporations, corporation alliances)
+    Update the affiliations for characters.
     Cached for 3600 seconds, so don't run it more frequently than that. 
     """
     character_ids = EveCharacter.objects.all().values_list('external_id', flat=True)
-    affiliations = EveClient.call(
-        'post_characters_affiliation', characters=character_ids).data
+    affiliations = []
+    for character_ids_segment in batch(list(character_ids), 999):
+        response = EveClient.call(
+            'post_characters_affiliation', characters=character_ids)
+        if response.status == 200:
+            affiliations = affiliations + response.data
 
     for affiliation in affiliations:
-        try:
-            character = EveCharacter.objects.get(
-                external_id=affiliation['character_id'])
-            if not EveCorporation.objects.filter(external_id=affiliation['corporation_id']):
-                EveCorporation.create_from_external_id(
-                    affiliation['corporation_id'])
-            corporation = EveCorporation.objects.get(
-                external_id=affiliation['corporation_id'])
-            if 'alliance_id' in affiliation:
-                if not EveAlliance.objects.filter(external_id=affiliation['alliance_id']):
-                    EveAlliance.create_from_external_id(
-                        affiliation['alliance_id'])
-                alliance = EveAlliance.objects.get(
-                    external_id=affiliation['alliance_id'])
-            else:
-                alliance = None
-
-            character.corporation = corporation
-            character.save()
-            if alliance:
-                corporation.alliance = alliance
-                corporation.save()
-        except Exception as e:
-            logger.error("Failed to update affiliation: %s" % affiliation)
-            logger.exception(e)
+        character_id = affiliation['character_id']
+        corporation_id = affiliation['corporation_id']
+        if EveCharacter.objects.filter(external_id=character_id, corporation__external_id=corporation_id).exists():
+            continue  # no need to update
+        else:
+            try:
+                character = EveCharacter.objects.get(external_id=character_id)
+                character.update_character_corporation(
+                    corporation_id=corporation_id)
+            except Exception:
+                logger.exception(
+                    f"Failed to update affiliation for {character_id}")
 
 
 @shared_task

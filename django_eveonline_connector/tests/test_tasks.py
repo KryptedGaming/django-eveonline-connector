@@ -5,9 +5,10 @@ from django_eveonline_connector.tasks import update_tokens
 from django_eveonline_connector.models import(EveToken, EveCharacter, EveCorporation,
                                               EveAlliance, EveClient, EveScope,
                                               EveGroupRule)
+from django_eveonline_connector.tests.mocks.characters import get_mock_affiliations_test_data
 from django_eveonline_connector.tests.mocks.corporations import mock_corporation_create_from_external_id
 from django_eveonline_connector.tests.mocks.generic import MockResponseObject
-from django_eveonline_connector.tests.utilities import clean_eve_models, create_tracked_eve_character, create_tracked_eve_corporation
+from django_eveonline_connector.tests.utilities import clean_eve_models, create_tracked_eve_character, create_tracked_eve_corporation, random_external_id, mock_raise_exception
 from unittest.mock import patch
 from datetime import timedelta
 import pytz
@@ -146,6 +147,62 @@ class TestEveCharacterTasks(TestCase):
         mock_update_character.return_value = None
         update_characters()
         self.assertTrue(True)
+
+    @patch('django_eveonline_connector.models.EveCorporation.create_from_external_id')
+    @patch('django_eveonline_connector.tasks.EveClient.call')
+    def test_update_affiliations(self, mock_eve_client, mock_create_eve_corporation):
+        from django_eveonline_connector.tasks import update_affiliations
+
+        mock_create_eve_corporation.side_effect = mock_corporation_create_from_external_id
+
+        character_a = EveCharacter.objects.create(
+            external_id=random_external_id(), name="Character A")
+        character_b = EveCharacter.objects.create(
+            external_id=random_external_id(), name="Character B")
+        corporation_a = EveCorporation.objects.create(
+            external_id=random_external_id(), name="Corporation A")
+
+        mock_eve_client.return_value = get_mock_affiliations_test_data(
+            character_a.external_id, character_b.external_id, corporation_a.external_id)
+
+        # normal run
+        update_affiliations()
+        character_a.refresh_from_db()
+        character_b.refresh_from_db()
+
+        self.assertEqual(character_a.corporation.external_id,
+                         corporation_a.external_id)
+        self.assertTrue(
+            character_b.corporation != None
+        )
+        self.assertTrue(
+            character_b.corporation != corporation_a
+        )
+
+        # check that characters are skipped
+        update_affiliations()
+
+    @patch('django_eveonline_connector.models.EveCharacter.update_character_corporation')
+    @patch('django_eveonline_connector.tasks.EveClient.call')
+    def test_update_affiliations_raised_exception(self, mock_eve_client, mock_update_character_corporation):
+        from django_eveonline_connector.tasks import update_affiliations
+
+        character_a = EveCharacter.objects.create(
+            external_id=random_external_id(), name="Character A")
+        character_b = EveCharacter.objects.create(
+            external_id=random_external_id(), name="Character B")
+        corporation_a = EveCorporation.objects.create(
+            external_id=random_external_id(), name="Corporation A")
+
+        mock_eve_client.return_value = get_mock_affiliations_test_data(
+            character_a.external_id, character_b.external_id, corporation_a.external_id)
+
+        mock_update_character_corporation.side_effect = mock_raise_exception
+
+        with self.assertLogs('django_eveonline_connector.tasks', level='ERROR') as cm:
+            update_affiliations()
+            self.assertTrue("Failed to update" in cm.output[0])
+            self.assertTrue("Failed to update" in cm.output[1])
 
     @patch('django_eveonline_connector.models.EveCharacter.update_character_corporation_roles')
     @patch('django_eveonline_connector.models.EveCharacter.update_character_corporation')
