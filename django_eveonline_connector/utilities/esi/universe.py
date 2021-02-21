@@ -17,7 +17,13 @@ def resolve_id(id):
 
 
 def resolve_ids(ids):
-    resolved_ids = EveClient.call('post_universe_names', ids=ids).data
+    response = EveClient.call('post_universe_names', ids=ids)
+
+    if response.status != 200:
+        raise EveDataResolutionError(
+            f"[{response.status} Failed to resolve universe names. {response.data}")
+
+    resolved_ids = response.data
     response = {}
     for resolved_id in resolved_ids:
         external_id = resolved_id['id']
