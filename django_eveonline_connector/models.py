@@ -72,6 +72,8 @@ class EveClient(DjangoSingleton):
         if cached_urls and scope_string in cached_urls:
             return cached_urls[scope_string]
         else:
+            if not cached_urls:
+                cached_urls = {}
             esi_sso_url = EsiSecurity(
                 client_id=self.esi_client_id,
                 redirect_uri=self.esi_callback_url,
