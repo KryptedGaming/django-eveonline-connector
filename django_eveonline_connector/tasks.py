@@ -181,9 +181,14 @@ def update_character_eveentitydata(op, data_model, character_id, delete=False):
     response = EveClient.call(op, character_id=character.external_id)
 
     if response.status != 200:
-        logger.error(
-            f"[{response.status}] Failed to batch update {data_model.__name__} for {character_id}: {response.header} {response.data}")
-        return
+        if response.status in [502, 503, 504]:
+            logger.warning(
+                f"Skipping batch update {data_model.__name__} for {character_id} due to ESI error")
+            return
+        else:
+            logger.error(
+                f"[{response.status}] Failed to batch update {data_model.__name__} for {character_id}: {response.header} {response.data}")
+            return
 
     items = response.data
 
