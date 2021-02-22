@@ -476,9 +476,8 @@ class EveCorporation(EveEntity):
         if EveCharacter.objects.filter(external_id=ceo_id).exists():
             self.ceo = EveCharacter.objects.get(external_id=ceo_id)
         else:
-            self.ceo = EveCharacter.create_from_external_id(external_id=ceo_id)
             logger.info(
-                f"Creating empty CEO character for {corporation_id}")
+                f"Skipping CEO update for {corporation_id}: CEO not in database")
 
         self.save()
 
