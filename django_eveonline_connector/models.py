@@ -468,11 +468,8 @@ class EveCorporation(EveEntity):
 
     def update_corporation_ceo(self):
         corporation_id = self.external_id
-
-        esi_operation = EveClient.get_esi_app(
-        ).op['get_corporations_corporation_id'](corporation_id=corporation_id, raise_exception=True)
-
-        response = EveClient.get_esi_client().request(esi_operation)
+        response = EveClient.call(
+            'get_corporations_corporation_id', corporation_id=corporation_id, raise_exception=True)
 
         ceo_id = response.data['ceo_id']
 
