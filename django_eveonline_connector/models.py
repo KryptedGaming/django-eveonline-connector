@@ -478,7 +478,7 @@ class EveCorporation(EveEntity):
         else:
             self.ceo = EveCharacter.create_from_external_id(external_id=ceo_id)
             logger.info(
-                f"Creating empty CEO character for {corporation_id})
+                f"Creating empty CEO character for {corporation_id}")
 
         self.save()
 
