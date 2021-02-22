@@ -506,7 +506,7 @@ class EveCorporation(EveEntity):
         response = EveClient.call('get_corporations_corporation_id_members',
                                   token=self.ceo.token, corporation_id=self.external_id)
         ids_that_exist = EveCharacter.objects.filter(
-            external_id__in=roster.data).values_list('external_id', flat=True)
+            external_id__in=response.data).values_list('external_id', flat=True)
 
         for character in response.data:
             if character not in ids_that_exist:
