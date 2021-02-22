@@ -470,7 +470,7 @@ class EveCorporation(EveEntity):
         corporation_id = self.external_id
 
         esi_operation = EveClient.get_esi_app(
-        ).op['get_corporations_corporation_id'](corporation_id=corporation_id)
+        ).op['get_corporations_corporation_id'](corporation_id=corporation_id, raise_exception=True)
 
         response = EveClient.get_esi_client().request(esi_operation)
 
