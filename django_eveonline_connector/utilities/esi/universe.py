@@ -44,7 +44,7 @@ def resolve_ids_with_types(ids):
         request = EveClient.call('post_universe_names', ids=ids_segment)
         if request.status != 200:
             raise EveDataResolutionError(
-                f"[{response.status}] Failed to resolve IDs: {ids_segment}\nResponse: {response.data}")
+                f"[{request.status}] Failed to resolve IDs: {ids_segment}\nResponse: {request.data}")
         resolved_ids = request.data
 
         for resolved_id in resolved_ids:
