@@ -44,8 +44,8 @@ task_binding = TaskBinding(
             "interval_period": "days",
         },
         {
-            "name": "EVE: Update Affilitions",
-            "task_name": "django_eveonline_connector.tasks.update_tokens",
+            "name": "EVE: Update Affiliations",
+            "task_name": "django_eveonline_connector.tasks.update_affiliations",
             "interval": 5,
             "interval_period": "minutes",
         }
