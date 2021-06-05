@@ -2,7 +2,7 @@ import os
 from setuptools import find_packages, setup
 
 install_requires = [
-    'Django==2.2.20',
+    'Django==2.2.21',
     'esipy==1.0.0',
     'celery>=4.3.0',
     'django_datatables_view==1.19.1',
